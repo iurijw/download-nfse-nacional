@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Download NFS-e Nacional — Retirada em Lote</title>
+<style>
+  /* ── Papel de formulário contínuo ──────────────────────────────
+     A página é uma folha de listagem de impressora matricial:
+     listras verdes, furos de tracionador, quadros de formulário. */
+  :root {
+    --desk: #c6ccbb;          /* mesa atrás da folha */
+    --paper: #f6f8ee;         /* papel base */
+    --stripe: #e2edd6;        /* listra verde clássica */
+    --box: #fbfcf6;           /* fundo sólido dos quadros */
+    --ink: #212b20;           /* tinta */
+    --ink-2: #5d6b58;         /* tinta esmaecida */
+    --rule: #3a4633;          /* bordas dos quadros */
+    --stamp: #2f3fa8;         /* azul de carimbo (ação) */
+    --stamp-press: #25348c;
+    --ok: #256b45;
+    --err: #a63a2b;
+    --note-bg: #fdf6dd;
+    --note-line: #d8c37e;
+    --note-ink: #6e5600;
+    --mono: "Cascadia Mono", Consolas, "Courier New", monospace;
+    --sans: "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--desk); }
+  body {
+    margin: 0; padding: 28px 12px 48px;
+    font-family: var(--sans); font-size: 14px; line-height: 1.5;
+    color: var(--ink);
+    display: flex; justify-content: center;
+  }
+
+  /* A folha */
+  .sheet {
+    position: relative;
+    width: 100%; max-width: 780px;
+    background:
+      repeating-linear-gradient(180deg,
+        var(--stripe) 0 26px,
+        var(--paper) 26px 52px);
+    box-shadow: 0 2px 14px rgba(30, 40, 25, .28);
+    padding: 26px 56px 34px;
+  }
+  /* Furos do tracionador nas laterais */
+  .sheet::before, .sheet::after {
+    content: "";
+    position: absolute; top: 0; bottom: 0; width: 30px;
+    background-image: radial-gradient(circle at 50% 17px,
+      var(--desk) 4.5px, rgba(20, 28, 16, .25) 5.5px, transparent 7px);
+    background-size: 30px 34px;
+    background-repeat: repeat-y;
+  }
+  .sheet::before { left: 0;  border-right: 1px dashed rgba(58, 70, 51, .45); }
+  .sheet::after  { right: 0; border-left:  1px dashed rgba(58, 70, 51, .45); }
+
+  /* ── Cabeçalho de listagem ── */
+  header { margin-bottom: 22px; }
+  .letterhead-top {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--ink-2);
+  }
+  h1 {
+    font-family: var(--mono); font-weight: 700;
+    font-size: clamp(19px, 4vw, 26px);
+    letter-spacing: .06em; text-transform: uppercase;
+    margin: 6px 0 4px;
+    border-bottom: 3px double var(--rule);
+    padding-bottom: 10px;
+  }
+  .letterhead-sub {
+    font-size: 13px; color: var(--ink-2); margin: 8px 0 0;
+  }
+
+  /* ── Linha de status: log impresso ── */
+  .status {
+    font-family: var(--mono); font-size: 13px;
+    padding: 9px 12px; margin-bottom: 18px;
+    background: var(--box);
+    border: 1.5px solid var(--rule);
+    color: var(--ink);
+    word-break: break-word;
+  }
+  .status::before { content: "» "; color: var(--ink-2); }
+  .status.ok    { color: var(--ok); }
+  .status.ok::before    { content: "● "; }
+  .status.error { color: var(--err); }
+  .status.error::before { content: "✕ "; }
+
+  .hidden { display: none !important; }
+
+  /* Nota amarela (aviso CORS) — bilhete grampeado na folha */
+  .warn {
+    background: var(--note-bg); border: 1.5px dashed var(--note-line);
+    color: var(--note-ink);
+    padding: 12px 14px; font-size: 13px; line-height: 1.6;
+    margin-bottom: 18px;
+  }
+  .warn strong { color: inherit; }
+  .warn code { background: rgba(110, 86, 0, .12); }
+
+  /* ── Quadros de formulário fiscal ── */
+  .quadro {
+    position: relative;
+    background: var(--box);
+    border: 1.5px solid var(--rule);
+    padding: 20px 16px 16px;
+    margin-bottom: 20px;
+  }
+  .quadro > legend, .quadro-label {
+    position: absolute; top: -9px; left: 10px;
+    background: var(--box);
+    border: 1px solid var(--rule);
+    padding: 1px 8px;
+    font-family: var(--mono); font-size: 10.5px; font-weight: 700;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--ink);
+  }
+
+  .kv { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; font-size: 13.5px; }
+  .kv .k { color: var(--ink-2); }
+  .kv .v { font-family: var(--mono); text-align: right; }
+
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .row:last-child { margin-bottom: 0; }
+  label { font-size: 13px; }
+
+  input[type=date], input[type=number], select {
+    font-family: var(--mono); font-size: 13px;
+    border: 1.5px solid var(--rule); border-radius: 0;
+    background: #fff; color: var(--ink);
+    padding: 6px 8px;
+  }
+  input[type=number] { width: 130px; }
+  input[type=checkbox] { accent-color: var(--stamp); width: 15px; height: 15px; }
+  select { accent-color: var(--stamp); }
+
+  .hint { font-size: 12px; color: var(--ink-2); line-height: 1.55; margin: 8px 0 0; }
+
+  /* ── Botões: carimbos ── */
+  button {
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase;
+    border: 1.5px solid var(--rule); border-radius: 0;
+    background: var(--box); color: var(--ink);
+    padding: 10px 16px; cursor: pointer;
+  }
+  button:hover { background: #eef2e2; }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: .5; cursor: default; }
+  button.primary {
+    background: var(--stamp); border-color: var(--stamp);
+    color: #fff;
+    box-shadow: 2px 2px 0 var(--rule);
+  }
+  button.primary:hover { background: var(--stamp-press); }
+  button.danger { color: var(--err); border-color: var(--err); }
+  button.small { padding: 6px 12px; }
+  :is(button, input, select, summary):focus-visible {
+    outline: 2px solid var(--stamp); outline-offset: 2px;
+  }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 4px 0 20px; }
+
+  /* ── Progresso: blocos impressos ── */
+  #bar {
+    font-family: var(--mono); font-size: 14px; letter-spacing: .05em;
+    white-space: pre; overflow: hidden;
+    color: var(--stamp);
+    margin: 4px 0 8px;
+  }
+  .progress-line {
+    display: flex; justify-content: space-between; gap: 12px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-2);
+    flex-wrap: wrap;
+  }
+
+  /* Listagem de totais — as listras aqui são linhas da listagem */
+  .listagem { margin-top: 14px; border-top: 1px dashed var(--rule); padding-top: 10px; }
+  .listagem .lrow {
+    display: flex; align-items: baseline; gap: 8px;
+    font-family: var(--mono); font-size: 13px; line-height: 26px;
+    padding: 0 6px;
+  }
+  .listagem .lrow:nth-child(odd) { background: var(--stripe); }
+  .listagem .lrow .leader {
+    flex: 1; border-bottom: 2px dotted rgba(58, 70, 51, .5);
+    transform: translateY(-4px);
+  }
+  .listagem .lrow .num { font-weight: 700; }
+
+  #errorBox {
+    font-family: var(--mono); font-size: 12px; color: var(--err);
+    margin-top: 12px; word-break: break-word;
+  }
+
+  /* ── Observações ── */
+  details { font-size: 13px; }
+  details summary {
+    cursor: pointer; font-family: var(--mono); font-size: 11px; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2);
+  }
+  details ol { line-height: 1.7; padding-left: 20px; margin: 10px 0 0; }
+  code {
+    font-family: var(--mono); font-size: 12px;
+    background: rgba(58, 70, 51, .1); padding: 1px 5px;
+  }
+
+  footer {
+    margin-top: 26px; text-align: center;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-2);
+  }
+
+  @media (max-width: 560px) {
+    .sheet { padding: 20px 16px 28px; }
+    .sheet::before, .sheet::after { display: none; }
+    .kv { flex-direction: column; gap: 0; }
+    .kv .v { text-align: left; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+    button:active { transform: none; }
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header>
+    <div class="letterhead-top">
+      <span>Ambiente de Dados Nacional · ADN</span>
+      <span id="folha">Folha 01</span>
+    </div>
+    <h1>Download NFS-e Nacional</h1>
+    <p class="letterhead-sub">Retirada de documentos fiscais em lote pela API oficial, com o certificado digital selecionado no navegador. Nada sai deste computador.</p>
+  </header>
+
+  <div id="status" class="status" role="status">Verificando conexão com a API...</div>
+
+  <div id="corsHint" class="warn hidden">
+    <strong>O navegador bloqueou o acesso à API (CORS)</strong> ou o certificado não foi apresentado.<br>
+    1) Abra esta página pelo <code>NFSe Downloader.bat</code> (ele inicia o Chrome com a permissão necessária).<br>
+    2) Clique em <em>“Selecionar certificado”</em> abaixo e escolha o certificado na janela do Chrome. Depois feche a aba que abrir e clique em <em>“Testar conexão”</em>.<br>
+    3) Se você cancelou o seletor de certificado por engano, feche <em>todas</em> as janelas do Chrome deste perfil e abra de novo pelo .bat.
+  </div>
+
+  <section class="quadro">
+    <span class="quadro-label">Quadro 01 · Identificação do contribuinte</span>
+    <div class="kv"><span class="k">Nome</span><span class="v" id="empresaNome">—</span></div>
+    <div class="kv"><span class="k">CNPJ/CPF</span><span class="v" id="empresaCnpj">—</span></div>
+    <div class="kv"><span class="k">Última sincronização</span><span class="v" id="lastSyncAt">nunca</span></div>
+    <div class="row" style="margin-top:12px">
+      <label for="lastNsu"><strong>Último NSU já baixado:</strong></label>
+      <input type="number" id="lastNsu" min="0" step="1" value="0">
+      <button id="btnSalvarNsu" class="small">Salvar</button>
+    </div>
+    <p class="hint">O download continua a partir do NSU seguinte a este. Deixe <strong>0</strong> para baixar tudo desde o início.
+    O valor é salvo no localStorage, separado por CNPJ — trocar de certificado não mistura os históricos.
+    Você pode editar manualmente e salvar.</p>
+  </section>
+
+  <section class="quadro">
+    <span class="quadro-label">Quadro 02 · Parâmetros da retirada</span>
+    <div class="row">
+      <label>De <input type="date" id="startDate"></label>
+      <label>até <input type="date" id="endDate"></label>
+    </div>
+    <div class="row">
+      <label>Tipo
+        <select id="filterTipo">
+          <option value="all">Todos</option>
+          <option value="NFSE">Só notas (NFS-e)</option>
+          <option value="EVENTO">Só eventos</option>
+          <option value="DPS">Só DPS</option>
+        </select>
+      </label>
+      <label>Direção
+        <select id="filterDirection">
+          <option value="all">Emitidas e recebidas</option>
+          <option value="emitidas">Só emitidas</option>
+          <option value="recebidas">Só recebidas</option>
+        </select>
+      </label>
+    </div>
+    <div class="row">
+      <label><input type="checkbox" id="excludeCancelled"> Não baixar notas canceladas</label>
+    </div>
+    <div class="row">
+      <label>Organizar pastas do ZIP
+        <select id="organization">
+          <option value="byMonth">Por mês de competência</option>
+          <option value="byRecipient">Por tomador</option>
+          <option value="byType">Por tipo de documento</option>
+          <option value="flat">Sem subpastas</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="optCsv" checked> Incluir resumo .csv</label>
+    </div>
+  </section>
+
+  <div class="actions">
+    <button id="btnCert">Selecionar certificado…</button>
+    <button id="btnCheck">Testar conexão</button>
+    <button id="btnSync" class="primary">Baixar notas</button>
+    <button id="btnStop" class="danger hidden">Parar</button>
+  </div>
+
+  <section class="quadro hidden" id="progressCard">
+    <span class="quadro-label">Quadro 03 · Execução</span>
+    <div id="bar" aria-hidden="true"></div>
+    <div class="progress-line"><span id="progressLabel">—</span><span id="progressCount"></span></div>
+    <div class="listagem hidden" id="summaryGrid">
+      <div class="lrow"><span>DOCUMENTOS PROCESSADOS</span><span class="leader"></span><span class="num" id="sumDocs">0</span></div>
+      <div class="lrow"><span>NFS-E</span><span class="leader"></span><span class="num" id="sumNfse">0</span></div>
+      <div class="lrow"><span>EVENTOS</span><span class="leader"></span><span class="num" id="sumEvento">0</span></div>
+      <div class="lrow"><span>VALOR LÍQUIDO TOTAL</span><span class="leader"></span><span class="num" id="sumValor">R$ 0,00</span></div>
+    </div>
+    <div id="errorBox" class="hidden"></div>
+  </section>
+
+  <section class="quadro">
+    <span class="quadro-label">Observações</span>
+    <details>
+      <summary>Como usar / limitações</summary>
+      <ol>
+        <li>Abra sempre pelo <code>NFSe Downloader.bat</code> — abrir o .html direto faz o navegador bloquear a API por CORS.</li>
+        <li>O certificado digital (A1 instalado no Windows ou A3 no token) precisa estar disponível no computador. O Chrome mostra o seletor de certificado na primeira conexão com <code>adn.nfse.gov.br</code>.</li>
+        <li>O Chrome memoriza o certificado escolhido até ser totalmente fechado. Para trocar de empresa, feche todas as janelas desse Chrome e abra de novo pelo .bat.</li>
+        <li>Esta página não envia dados para lugar nenhum: fala só com <code>adn.nfse.gov.br</code> e salva o cursor NSU no localStorage local.</li>
+        <li>Notas canceladas: o cancelamento é um EVENTO separado. O filtro só consegue remover canceladas cujo evento esteja no intervalo baixado — para limpar tudo, baixe desde o NSU 0.</li>
+      </ol>
+    </details>
+  </section>
+
+  <footer>Processado localmente · nenhum dado sai deste computador</footer>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+const $ = (s) => document.querySelector(s);
+
+// ── API ADN ───────────────────────────────────────────────────────
+const ADN_BASE = 'https://adn.nfse.gov.br/contribuintes';
+const TRANSIENT = new Set([429, 502, 503, 504]);
+const FETCH_TIMEOUT_MS = 15000;
+const HARD_BATCH_LIMIT = 500;
+
+const rate = { lastFetchAt: 0, minDelay: 1000, recent429s: 0, cooldownUntil: 0 };
+
+function parseRetryAfter(v) {
+  if (!v) return null;
+  const n = parseInt(v, 10);
+  if (!isNaN(n)) return n * 1000;
+  const d = new Date(v);
+  if (!isNaN(d.getTime())) { const diff = d.getTime() - Date.now(); return diff > 0 ? diff : null; }
+  return null;
+}
+async function waitBudget() {
+  const now = Date.now();
+  if (rate.cooldownUntil > now) await sleep(rate.cooldownUntil - now);
+  const since = Date.now() - rate.lastFetchAt;
+  if (since < rate.minDelay) await sleep(rate.minDelay - since);
+}
+function onSuccess() {
+  if (rate.recent429s > 0) rate.recent429s = Math.max(0, rate.recent429s - 0.2);
+  if (rate.minDelay > 1000 && rate.recent429s < 1) rate.minDelay = Math.max(1000, rate.minDelay - 200);
+}
+function on429(retryAfterMs) {
+  rate.recent429s += 1;
+  rate.minDelay = Math.min(8000, Math.round(rate.minDelay * 1.5));
+  if (retryAfterMs) rate.cooldownUntil = Math.max(rate.cooldownUntil, Date.now() + retryAfterMs);
+}
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function fetchAdnBatch(nsu) {
+  const url = `${ADN_BASE}/DFe/${nsu}?lote=true`;
+  let lastStatus = null, lastError = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await waitBudget();
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const resp = await fetch(url, {
+        credentials: 'include',
+        headers: { 'Accept': 'application/json' },
+        signal: ctrl.signal,
+      });
+      clearTimeout(t);
+      rate.lastFetchAt = Date.now();
+      if (TRANSIENT.has(resp.status)) {
+        lastStatus = resp.status;
+        const ra = parseRetryAfter(resp.headers.get('retry-after'));
+        if (resp.status === 429) on429(ra);
+        await sleep(ra || 2000 * Math.pow(2, attempt));
+        continue;
+      }
+      if (!resp.ok) return { ok: false, status: resp.status, error: `HTTP ${resp.status}` };
+      const data = await resp.json();
+      onSuccess();
+      return { ok: true, data };
+    } catch (err) {
+      clearTimeout(t);
+      rate.lastFetchAt = Date.now();
+      lastError = err.name === 'AbortError' ? new Error(`timeout (${FETCH_TIMEOUT_MS / 1000}s)`) : err;
+      if (attempt < 4) await sleep(1500 * (attempt + 1));
+    }
+  }
+  if (lastStatus) return { ok: false, status: lastStatus, error: `HTTP ${lastStatus}` };
+  return { ok: false, error: lastError ? lastError.message : 'falha desconhecida', maybeCors: true };
+}
+
+// ── XML: decodificar base64+gzip e extrair metadados ─────────────
+async function decodeGzipBase64(b64) {
+  if (!b64) throw new Error('documento sem conteúdo XML');
+  const norm = b64.replace(/-/g, '+').replace(/_/g, '/').replace(/\s/g, '');
+  const binary = atob(norm);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
+    const stream = new Response(bytes).body.pipeThrough(new DecompressionStream('gzip'));
+    return await new Response(stream).text();
+  }
+  return new TextDecoder('utf-8').decode(bytes);
+}
+
+function getText(parent, ...selectors) {
+  for (const sel of selectors) {
+    const el = parent.querySelector(sel);
+    if (el && el.textContent.trim()) return el.textContent.trim();
+  }
+  return '';
+}
+
+function extractXmlMetadata(xmlString) {
+  try {
+    const doc = new DOMParser().parseFromString(xmlString, 'text/xml');
+    if (doc.querySelector('parsererror')) return null;
+    const root = doc.documentElement;
+    const meta = {
+      numero: getText(root, 'nNFSe', 'nDPS'),
+      dataEmissao: getText(root, 'dhEmi') || getText(root, 'dhProc') || getText(root, 'dhEvento'),
+      dataCompetencia: getText(root, 'dCompet'),
+      valorServicos: getText(root, 'vServ', 'vLiq'),
+      valorLiquido: getText(root, 'vLiq', 'vServ'),
+      municipio: getText(root, 'xLocPrestacao', 'xLocEmi'),
+      prestadorCnpj: '', prestadorNome: '',
+      tomadorCpfCnpj: '', tomadorNome: 'Tomador nao identificado',
+    };
+    const emit = root.querySelector('emit') || root.querySelector('prest');
+    if (emit) {
+      meta.prestadorCnpj = getText(emit, 'CNPJ', 'CPF');
+      meta.prestadorNome = getText(emit, 'xNome', 'xRazSoc');
+    }
+    const toma = root.querySelector('toma') || root.querySelector('tomador');
+    if (toma) {
+      meta.tomadorCpfCnpj = getText(toma, 'CPF', 'CNPJ');
+      meta.tomadorNome = getText(toma, 'xNome', 'xRazSoc') || 'Tomador nao identificado';
+    }
+    meta.dataEmissaoISO = meta.dataEmissao ? meta.dataEmissao.slice(0, 10) : '';
+    meta.competenciaMes = meta.dataCompetencia
+      ? meta.dataCompetencia.slice(0, 7)
+      : (meta.dataEmissaoISO ? meta.dataEmissaoISO.slice(0, 7) : 'sem-data');
+    return meta;
+  } catch (_) { return null; }
+}
+
+const digitsOnly = (s) => (s || '').replace(/\D/g, '');
+
+function formatCnpjCpf(d) {
+  const v = digitsOnly(d);
+  if (v.length === 14) return v.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+  if (v.length === 11) return v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  return d || '';
+}
+
+// Dono do certificado = CNPJ/CPF que mais aparece nos documentos
+// (prestador nas emitidas, tomador nas recebidas).
+function detectOwner(metas) {
+  const tally = new Map();
+  const bump = (doc, nome, role) => {
+    const d = digitsOnly(doc);
+    if (d.length !== 11 && d.length !== 14) return;
+    let e = tally.get(d);
+    if (!e) { e = { cnpj: d, docs: 0, asPrest: 0, asToma: 0, nome: '' }; tally.set(d, e); }
+    e.docs++;
+    if (role === 'prest') e.asPrest++; else e.asToma++;
+    if (!e.nome && nome && nome !== 'Tomador nao identificado') e.nome = nome;
+  };
+  for (const m of metas) {
+    if (!m) continue;
+    bump(m.prestadorCnpj, m.prestadorNome, 'prest');
+    bump(m.tomadorCpfCnpj, m.tomadorNome, 'toma');
+  }
+  const ranked = [...tally.values()].sort((a, b) =>
+    b.docs - a.docs ||
+    ((b.asPrest > 0 && b.asToma > 0) ? 1 : 0) - ((a.asPrest > 0 && a.asToma > 0) ? 1 : 0) ||
+    b.asToma - a.asToma
+  );
+  return ranked[0] || null;
+}
+
+// ── Canceladas: evento com chNFSe apontando para a chave da nota ──
+function extractCanceledChave(doc) {
+  if (doc.tipoDoc !== 'EVENTO' || !doc.xml) return null;
+  try {
+    const x = new DOMParser().parseFromString(doc.xml, 'text/xml');
+    const chEl = x.getElementsByTagName('chNFSe')[0];
+    const chave = chEl ? chEl.textContent.replace(/\D/g, '') : '';
+    if (!chave) return null;
+    let isCancel = /cancel/i.test(doc.tipoEvento || '');
+    if (!isCancel) {
+      const all = x.getElementsByTagName('*');
+      for (let i = 0; i < all.length; i++) {
+        const tag = all[i].localName || all[i].tagName || '';
+        if (/^e(1011|1051)\d{2}$/.test(tag)) { isCancel = true; break; }
+      }
+    }
+    return isCancel ? chave : null;
+  } catch (_) { return null; }
+}
+
+function removeCancelled(docs, state) {
+  const canceledNotes = new Set();
+  const cancelEvents = new Set();
+  for (const d of docs) {
+    const ch = extractCanceledChave(d);
+    if (ch) { canceledNotes.add(ch); cancelEvents.add(digitsOnly(d.chave)); }
+  }
+  if (canceledNotes.size === 0) return docs;
+  let removed = 0;
+  const kept = docs.filter(d => {
+    if (d.tipoDoc === 'NFSE' && canceledNotes.has(digitsOnly(d.chave))) { removed++; return false; }
+    if (d.tipoDoc === 'EVENTO' && cancelEvents.has(digitsOnly(d.chave))) return false;
+    return true;
+  });
+  if (state) state.canceledRemoved = removed;
+  return kept;
+}
+
+// ── Filtros ───────────────────────────────────────────────────────
+function matchesDirection(doc, direction, ownerCnpj) {
+  if (!direction || direction === 'all') return true;
+  if (!ownerCnpj) return true;
+  if (doc.tipoDoc !== 'NFSE') return true;
+  const prest = digitsOnly(doc.meta?.prestadorCnpj);
+  const toma = digitsOnly(doc.meta?.tomadorCpfCnpj);
+  if (direction === 'emitidas') return prest === ownerCnpj;
+  if (direction === 'recebidas') return toma === ownerCnpj;
+  return true;
+}
+
+function applyFilters(docs, filters, ownerCnpj) {
+  const owner = digitsOnly(ownerCnpj);
+  return docs.filter(d => {
+    if (filters.tipo !== 'all' && d.tipoDoc !== filters.tipo) return false;
+    if (filters.startDate && d.meta?.dataEmissaoISO && d.meta.dataEmissaoISO < filters.startDate) return false;
+    if (filters.endDate && d.meta?.dataEmissaoISO && d.meta.dataEmissaoISO > filters.endDate) return false;
+    if (!matchesDirection(d, filters.direction, owner)) return false;
+    return true;
+  });
+}
+
+// ── Nomes de arquivo e pastas ─────────────────────────────────────
+function sanitizeFilename(name) {
+  return (name || '').replace(/[\/\\:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim().substring(0, 60);
+}
+const TIPO_FOLDER = { NFSE: 'Notas', EVENTO: 'Cancelamentos', DPS: 'DPS' };
+function buildFolderPath(doc, mode) {
+  const meta = doc.meta || {};
+  if (mode === 'byMonth') return `NFSe/${meta.competenciaMes || 'sem-data'}`;
+  if (mode === 'byRecipient') return `NFSe/${sanitizeFilename(meta.tomadorNome || 'Tomador nao identificado')}`;
+  if (mode === 'byType') return `NFSe/${TIPO_FOLDER[doc.tipoDoc] || doc.tipoDoc}`;
+  return 'NFSe';
+}
+function buildFileName(doc) {
+  const meta = doc.meta || {};
+  const dateStr = (meta.dataEmissaoISO || 'sem-data').replace(/-/g, '');
+  const numero = meta.numero ? String(meta.numero).padStart(4, '0') : `nsu${doc.nsu}`;
+  const tomador = sanitizeFilename(meta.tomadorNome || 'desconhecido').replace(/\s+/g, '_').slice(0, 35);
+  const valorInt = meta.valorLiquido ? Math.round(parseFloat(meta.valorLiquido)) : 0;
+  const tipo = doc.tipoDoc === 'NFSE' ? 'NFSe' : doc.tipoDoc;
+  return `${dateStr}_${tipo}-${numero}_${tomador}_R${valorInt}.xml`;
+}
+
+// ── ZIP mínimo (método STORE, sem dependências) ───────────────────
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(bytes) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function buildZip(files) { // files: [{ name, data: string|Uint8Array }]
+  const enc = new TextEncoder();
+  const chunks = [], central = [];
+  let offset = 0;
+  const d = new Date();
+  const time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+  const date = (((d.getFullYear() - 1980) & 0x7F) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  const w16 = (v) => [v & 0xFF, (v >>> 8) & 0xFF];
+  const w32 = (v) => [v & 0xFF, (v >>> 8) & 0xFF, (v >>> 16) & 0xFF, (v >>> 24) & 0xFF];
+  for (const f of files) {
+    const name = enc.encode(f.name);
+    const data = f.data instanceof Uint8Array ? f.data : enc.encode(f.data);
+    const crc = crc32(data);
+    const header = new Uint8Array([
+      0x50, 0x4B, 0x03, 0x04, ...w16(20), ...w16(0x0800), ...w16(0),
+      ...w16(time), ...w16(date), ...w32(crc), ...w32(data.length), ...w32(data.length),
+      ...w16(name.length), ...w16(0),
+    ]);
+    chunks.push(header, name, data);
+    central.push({ name, crc, size: data.length, offset });
+    offset += header.length + name.length + data.length;
+  }
+  const cdStart = offset;
+  for (const e of central) {
+    const rec = new Uint8Array([
+      0x50, 0x4B, 0x01, 0x02, ...w16(20), ...w16(20), ...w16(0x0800), ...w16(0),
+      ...w16(time), ...w16(date), ...w32(e.crc), ...w32(e.size), ...w32(e.size),
+      ...w16(e.name.length), ...w16(0), ...w16(0), ...w16(0), ...w16(0),
+      ...w32(0), ...w32(e.offset),
+    ]);
+    chunks.push(rec, e.name);
+    offset += rec.length + e.name.length;
+  }
+  const eocd = new Uint8Array([
+    0x50, 0x4B, 0x05, 0x06, ...w16(0), ...w16(0),
+    ...w16(central.length), ...w16(central.length),
+    ...w32(offset - cdStart), ...w32(cdStart), ...w16(0),
+  ]);
+  chunks.push(eocd);
+  return new Blob(chunks, { type: 'application/zip' });
+}
+
+// ── CSV resumo ────────────────────────────────────────────────────
+function buildCsv(docs) {
+  const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const header = ['Tipo', 'Numero', 'Emissao', 'Competencia', 'Prestador', 'CNPJ/CPF prestador',
+    'Tomador', 'CNPJ/CPF tomador', 'Municipio', 'Valor servico', 'Valor liquido', 'Chave de acesso'];
+  const lines = [header.join(';')];
+  for (const d of docs) {
+    const m = d.meta || {};
+    lines.push([
+      d.tipoDoc === 'NFSE' ? 'NFS-e' : (d.tipoDoc || ''), m.numero || '', m.dataEmissaoISO || '',
+      m.competenciaMes || '', m.prestadorNome || '', m.prestadorCnpj || '',
+      m.tomadorNome || '', m.tomadorCpfCnpj || '', m.municipio || '',
+      (m.valorServicos || '').replace('.', ','), (m.valorLiquido || '').replace('.', ','), d.chave || '',
+    ].map(esc).join(';'));
+  }
+  return '﻿' + lines.join('\r\n');
+}
+
+// ── localStorage: cursor NSU por CNPJ ─────────────────────────────
+const LS_EMPRESAS = 'nfse.empresas';
+const LS_LAST_CNPJ = 'nfse.lastCnpj';
+
+function getEmpresas() {
+  try { return JSON.parse(localStorage.getItem(LS_EMPRESAS)) || {}; }
+  catch (_) { return {}; }
+}
+function saveEmpresaCursor(cnpj, nome, lastNSU, { seed = false } = {}) {
+  const empresas = getEmpresas();
+  const prev = empresas[cnpj] || {};
+  empresas[cnpj] = {
+    cnpj,
+    nome: nome || prev.nome || '',
+    lastNSU: typeof lastNSU === 'number' ? lastNSU : (prev.lastNSU || 0),
+    lastSyncAt: seed ? (prev.lastSyncAt || null) : new Date().toISOString(),
+  };
+  localStorage.setItem(LS_EMPRESAS, JSON.stringify(empresas));
+  localStorage.setItem(LS_LAST_CNPJ, cnpj);
+}
+
+// ── UI ────────────────────────────────────────────────────────────
+const statusEl = $('#status'), corsHint = $('#corsHint');
+const empresaNomeEl = $('#empresaNome'), empresaCnpjEl = $('#empresaCnpj'), lastSyncEl = $('#lastSyncAt');
+const lastNsuInput = $('#lastNsu');
+const btnSync = $('#btnSync'), btnStop = $('#btnStop'), btnCheck = $('#btnCheck'), btnCert = $('#btnCert');
+const progressCard = $('#progressCard'), bar = $('#bar');
+const progressLabel = $('#progressLabel'), progressCount = $('#progressCount');
+const summaryGrid = $('#summaryGrid'), errorBox = $('#errorBox');
+
+let currentEmpresa = null;   // { cnpj, nome } do certificado ativo
+let stopRequested = false;
+
+function setStatus(type, text) {
+  statusEl.className = 'status' + (type ? ' ' + type : '');
+  statusEl.textContent = text;
+}
+const BAR_CELLS = 24;
+function setProgress(label, count, pct) {
+  progressCard.classList.remove('hidden');
+  progressLabel.textContent = label;
+  progressCount.textContent = count || '';
+  if (pct != null) {
+    const p = Math.max(0, Math.min(100, Math.round(pct)));
+    const filled = Math.round((p / 100) * BAR_CELLS);
+    bar.textContent = '▓'.repeat(filled) + '░'.repeat(BAR_CELLS - filled) + '  ' + p + '%';
+  }
+}
+function showEmpresa(cnpj, nome) {
+  empresaNomeEl.textContent = nome || '—';
+  empresaCnpjEl.textContent = cnpj ? formatCnpjCpf(cnpj) : '—';
+  const e = getEmpresas()[cnpj];
+  lastSyncEl.textContent = e?.lastSyncAt ? new Date(e.lastSyncAt).toLocaleString('pt-BR') : 'nunca';
+  lastNsuInput.value = e?.lastNSU || 0;
+}
+
+// ── Sondagem (NSU 0): identifica a empresa do certificado ────────
+async function probeActiveEmpresa() {
+  const resp = await fetchAdnBatch(0);
+  if (!resp.ok) return { error: resp };
+  const batch = resp.data;
+  if (batch.StatusProcessamento === 'NENHUM_DOCUMENTO_LOCALIZADO' || !batch.LoteDFe?.length) {
+    return { empty: true };
+  }
+  const rawDocs = [], metas = [];
+  for (const doc of batch.LoteDFe) {
+    const raw = {
+      nsu: doc.NSU, chave: doc.ChaveAcesso,
+      tipoDoc: doc.TipoDocumento, tipoEvento: doc.TipoEvento || null,
+      xmlBase64Gz: doc.ArquivoXml,
+    };
+    try {
+      raw.xml = await decodeGzipBase64(doc.ArquivoXml);
+      raw.meta = extractXmlMetadata(raw.xml);
+      if (raw.meta) metas.push(raw.meta);
+    } catch (_) {}
+    rawDocs.push(raw);
+  }
+  const owner = detectOwner(metas);
+  return { owner, rawDocs };
+}
+
+async function checkConnection() {
+  setStatus('', 'Verificando conexão com a API...');
+  const probe = await probeActiveEmpresa();
+  if (probe.error) {
+    const hint = probe.error.error || '';
+    if (probe.error.maybeCors || /Failed to fetch|timeout/i.test(hint)) {
+      setStatus('error', 'Não foi possível acessar a API. Veja as instruções abaixo.');
+      corsHint.classList.remove('hidden');
+    } else {
+      setStatus('error', `A API da NFS-e retornou erro (${hint}). Tente de novo em instantes.`);
+    }
+    return null;
+  }
+  corsHint.classList.add('hidden');
+  if (probe.empty) {
+    setStatus('ok', 'Conectado à API NFS-e Nacional — caixa de entrada vazia para este certificado.');
+    return probe;
+  }
+  if (probe.owner) {
+    currentEmpresa = { cnpj: probe.owner.cnpj, nome: probe.owner.nome };
+    saveEmpresaCursor(probe.owner.cnpj, probe.owner.nome, undefined, { seed: true });
+    showEmpresa(probe.owner.cnpj, probe.owner.nome);
+  }
+  setStatus('ok', `Conectado à API NFS-e Nacional — ${probe.rawDocs.length}+ documentos disponíveis.`);
+  return probe;
+}
+
+// ── Sincronização principal ───────────────────────────────────────
+async function runSync() {
+  stopRequested = false;
+  btnSync.classList.add('hidden');
+  btnStop.classList.remove('hidden');
+  summaryGrid.classList.add('hidden');
+  errorBox.classList.add('hidden');
+  errorBox.textContent = '';
+
+  const filters = {
+    startDate: $('#startDate').value || null,
+    endDate: $('#endDate').value || null,
+    tipo: $('#filterTipo').value,
+    direction: $('#filterDirection').value,
+    excludeCancelled: $('#excludeCancelled').checked,
+  };
+  const organizationMode = $('#organization').value;
+  const includeCsv = $('#optCsv').checked;
+  const state = { errors: [], nfseCount: 0, eventoCount: 0, dpsCount: 0, canceledRemoved: 0, valorTotalCentavos: 0 };
+
+  try {
+    // 1) Identificar a empresa do certificado (sonda NSU 0)
+    setProgress('Identificando a empresa do certificado...', '', 5);
+    const probe = await probeActiveEmpresa();
+    if (probe.error) throw new Error(probe.error.error || 'falha ao consultar a API');
+    if (probe.empty) {
+      setStatus('ok', 'Nenhuma nota encontrada para este certificado.');
+      finalize(); return;
+    }
+    if (probe.owner) {
+      currentEmpresa = { cnpj: probe.owner.cnpj, nome: probe.owner.nome };
+      showEmpresa(probe.owner.cnpj, probe.owner.nome);
+    }
+    const cnpjKey = currentEmpresa?.cnpj || 'sem-cnpj';
+
+    // 2) Cursor: campo manual manda; 0 = baixar tudo
+    const manualLast = parseInt(lastNsuInput.value, 10) || 0;
+    let nsu = manualLast > 0 ? manualLast + 1 : 0;
+    let highestNSU = manualLast;
+
+    // 3) Buscar lotes por NSU até 404 / vazio
+    const rawDocs = [];
+    const ingest = (docs) => {
+      for (const doc of docs) {
+        if (doc.nsu > highestNSU) highestNSU = doc.nsu;
+        rawDocs.push(doc);
+        if (doc.tipoDoc === 'NFSE') state.nfseCount++;
+        else if (doc.tipoDoc === 'EVENTO') state.eventoCount++;
+        else if (doc.tipoDoc === 'DPS') state.dpsCount++;
+      }
+    };
+    if (nsu === 0 && probe.rawDocs?.length) {  // reutiliza o lote da sonda
+      ingest(probe.rawDocs);
+      nsu = highestNSU + 1;
+    }
+    for (let i = 0; i < HARD_BATCH_LIMIT && !stopRequested; i++) {
+      setProgress('Buscando suas notas...', `${rawDocs.length} encontradas (NSU ${nsu})`, 10 + Math.min(i, 40));
+      const resp = await fetchAdnBatch(nsu);
+      if (!resp.ok) {
+        if (resp.status === 404) break;  // fim do feed
+        state.errors.push(`lote NSU ${nsu}: ${resp.error}`);
+        break;
+      }
+      const batch = resp.data;
+      if (batch.StatusProcessamento === 'NENHUM_DOCUMENTO_LOCALIZADO' || !batch.LoteDFe?.length) break;
+      ingest(batch.LoteDFe.map(doc => ({
+        nsu: doc.NSU, chave: doc.ChaveAcesso,
+        tipoDoc: doc.TipoDocumento, tipoEvento: doc.TipoEvento || null,
+        xmlBase64Gz: doc.ArquivoXml,
+      })));
+      nsu = highestNSU + 1;
+    }
+    if (stopRequested) { setStatus('ok', 'Sincronização cancelada.'); finalize(); return; }
+
+    // 4) Salvar cursor por CNPJ no localStorage + refletir no campo
+    saveEmpresaCursor(cnpjKey, currentEmpresa?.nome, highestNSU);
+    lastNsuInput.value = highestNSU;
+    lastSyncEl.textContent = new Date().toLocaleString('pt-BR');
+
+    if (rawDocs.length === 0) {
+      setStatus('ok', 'Nenhum documento novo desde o último NSU.');
+      finalize(); return;
+    }
+
+    // 5) Decodificar XMLs
+    const decoded = [];
+    for (let i = 0; i < rawDocs.length; i++) {
+      if (stopRequested) break;
+      const raw = rawDocs[i];
+      if (!raw.xml && !raw.xmlBase64Gz) continue;
+      try {
+        const xml = raw.xml || await decodeGzipBase64(raw.xmlBase64Gz);
+        const meta = raw.meta || extractXmlMetadata(xml);
+        decoded.push({ ...raw, xml, meta });
+        if (meta?.valorLiquido && raw.tipoDoc === 'NFSE') {
+          const cents = Math.round(parseFloat(meta.valorLiquido) * 100);
+          if (!isNaN(cents)) state.valorTotalCentavos += cents;
+        }
+      } catch (err) {
+        state.errors.push(`decodificar NSU ${raw.nsu}: ${err.message}`);
+      }
+      if (i % 10 === 0) setProgress('Preparando seus arquivos...', `${i}/${rawDocs.length}`, 50 + Math.round((i / rawDocs.length) * 30));
+    }
+    if (stopRequested) { setStatus('ok', 'Sincronização cancelada.'); finalize(); return; }
+
+    // 6) Filtrar
+    let working = decoded;
+    if (filters.excludeCancelled) working = removeCancelled(working, state);
+    const filtered = applyFilters(working, filters, currentEmpresa?.cnpj);
+    if (filtered.length === 0) {
+      setStatus('ok', `Nenhum documento passou nos filtros (${decoded.length} baixados da API).`);
+      finalize(); return;
+    }
+
+    // 7) Montar ZIP
+    setProgress('Montando seu download...', `${filtered.length} arquivos`, 85);
+    const files = [];
+    const usedNames = new Set();
+    for (const doc of filtered) {
+      let path = `${buildFolderPath(doc, organizationMode)}/${buildFileName(doc)}`;
+      if (usedNames.has(path)) path = path.replace(/\.xml$/, `_nsu${doc.nsu}.xml`);
+      usedNames.add(path);
+      files.push({ name: path, data: doc.xml });
+    }
+    if (includeCsv) {
+      files.push({ name: `NFSe/resumo_${new Date().toISOString().slice(0, 10)}.csv`, data: buildCsv(filtered) });
+    }
+    const blob = buildZip(files);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `NFSe_${new Date().toISOString().slice(0, 10)}_${filtered.length}docs.zip`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+
+    // 8) Resumo
+    setProgress('Concluído!', `${filtered.length} arquivos no ZIP`, 100);
+    summaryGrid.classList.remove('hidden');
+    $('#sumDocs').textContent = decoded.length;
+    $('#sumNfse').textContent = state.nfseCount;
+    $('#sumEvento').textContent = state.eventoCount;
+    $('#sumValor').textContent = (state.valorTotalCentavos / 100)
+      .toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    let msg = `Pronto — ${filtered.length} documentos baixados.`;
+    if (state.canceledRemoved > 0) msg += ` ${state.canceledRemoved} canceladas removidas.`;
+    setStatus('ok', msg);
+    if (state.errors.length) {
+      errorBox.classList.remove('hidden');
+      errorBox.textContent = `${state.errors.length} documento(s) com erro: ${state.errors.slice(0, 5).join(' | ')}`;
+      console.warn('[NFSe] erros:', state.errors);
+    }
+    finalize();
+  } catch (err) {
+    console.error('[NFSe] erro na sincronização:', err);
+    setStatus('error', `Algo deu errado: ${err.message}`);
+    if (/Failed to fetch/i.test(err.message)) corsHint.classList.remove('hidden');
+    finalize();
+  }
+
+  function finalize() {
+    btnSync.classList.remove('hidden');
+    btnStop.classList.add('hidden');
+  }
+}
+
+// ── Eventos ───────────────────────────────────────────────────────
+btnSync.addEventListener('click', runSync);
+btnStop.addEventListener('click', () => { stopRequested = true; setStatus('', 'Cancelando...'); });
+btnCheck.addEventListener('click', checkConnection);
+
+btnCert.addEventListener('click', () => {
+  // Abrir a URL do ADN numa aba dispara o seletor de certificados do Chrome.
+  // Depois de escolher, feche a aba e clique em "Testar conexão".
+  window.open(`${ADN_BASE}/DFe/0?lote=true`, '_blank');
+  setStatus('', 'Selecione o certificado na aba que abriu, feche-a e clique em "Testar conexão".');
+});
+
+$('#btnSalvarNsu').addEventListener('click', () => {
+  const v = parseInt(lastNsuInput.value, 10);
+  if (isNaN(v) || v < 0) { setStatus('error', 'Informe um NSU válido (0 ou maior).'); return; }
+  const cnpjKey = currentEmpresa?.cnpj || localStorage.getItem(LS_LAST_CNPJ) || 'sem-cnpj';
+  saveEmpresaCursor(cnpjKey, currentEmpresa?.nome, v);
+  setStatus('ok', `Último NSU salvo: ${v} (${cnpjKey === 'sem-cnpj' ? 'sem empresa detectada' : formatCnpjCpf(cnpjKey)}).`);
+});
+
+// ── Inicialização ─────────────────────────────────────────────────
+if (typeof DecompressionStream === 'undefined') {
+  setStatus('error', 'Este navegador não suporta DecompressionStream. Use Chrome ou Edge atualizados.');
+} else {
+  // Mostra o último estado salvo antes mesmo de conectar.
+  const lastCnpj = localStorage.getItem(LS_LAST_CNPJ);
+  if (lastCnpj) {
+    const e = getEmpresas()[lastCnpj];
+    if (e) showEmpresa(e.cnpj, e.nome);
+  }
+  checkConnection();
+}
+})();
+</script>
+</body>
+</html>
