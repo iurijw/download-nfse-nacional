@@ -2,6 +2,10 @@
 
 "Algo tão simples não deveria ser difícil, muito menos cobrado."
 
+<p align="center">
+  <img src="demo.png" alt="Interface do Download NFS-e Nacional" width="600">
+</p>
+
 Baixe os XMLs das suas NFS-e (emitidas e recebidas) direto da **API oficial do ADN** (`adn.nfse.gov.br`), usando seu certificado digital. Sem captcha, sem instalar programa, sem enviar dados a terceiros.
 
 ## Como usar
