@@ -15,12 +15,18 @@ Baixe os XMLs das suas NFS-e (emitidas e recebidas) direto da **API oficial do A
 3. Dê **duplo clique em `NFSe Downloader.bat`**.
 4. Na página que abrir, clique em **"Selecionar certificado…"**, escolha seu certificado na janela do Chrome e feche a aba que abriu.
 5. Clique em **"Testar conexão"** e depois em **"Buscar todas as notas"**. A busca varre o feed inteiro, sempre a partir do NSU `0`.
-6. Todas as notas aparecem **listadas na própria página** (Quadro 04). Use os filtros do Quadro 02 (período, tipo, direção, canceladas, busca por texto) e/ou desmarque linhas individuais.
+6. Todas as notas aparecem **listadas na própria página** (Quadro 04). Use os filtros do Quadro 02 (período de processamento, tipo, direção, canceladas, busca por texto) e/ou desmarque linhas individuais.
 7. Clique em **"Baixar ZIP dos marcados"**. O ZIP leva exatamente o que está listado e marcado, com os XMLs organizados em pastas, o **DANFSe de cada nota em PDF** e um resumo `.csv`.
 
 Os filtros são aplicados **na listagem**, não na consulta: mudar um filtro não refaz nenhuma chamada à API. Dá para gerar vários ZIPs diferentes (um por mês, um por tomador, só as recebidas...) a partir da mesma busca.
 
-Na listagem dá para **ordenar clicando no cabeçalho** de qualquer coluna. Notas canceladas aparecem em vermelho, com a situação `CANCELADA`. Notas em que o valor bruto (`vBC`) difere do líquido (`vLiq`) — ou seja, com **imposto retido** — aparecem com a linha em amarelo e a etiqueta `VALORES RETIDOS`; passe o mouse na etiqueta para ver bruto, líquido e diferença, ou digite `retido` na busca para listar só elas.
+Na listagem dá para **ordenar clicando no cabeçalho** de qualquer coluna. Notas canceladas aparecem em vermelho, com a situação `CANCELADA`. Notas com **imposto retido** aparecem com a linha em amarelo e a etiqueta `VALORES RETIDOS`. Isso vale para qualquer tributo retido informado no XML (`vRetIRRF`, `vRetCP`, `vRetCSLL`, PIS/COFINS retidos, ISSQN retido ou `vTotalRet`), **mesmo quando o valor bruto (`vBC`) é igual ao líquido (`vLiq`)**, e também para notas em que o bruto difere do líquido. Passe o mouse na etiqueta para ver cada tributo retido, bruto, líquido e diferença, ou digite `retido` (ou o tributo, como `irrf`) na busca para listar só elas. O `.csv` traz a coluna `Tributos retidos` com o detalhe de cada nota.
+
+O filtro de período usa a **data de processamento** da nota (`dhProc`), não a de emissão (`dhEmi`) — uma DPS emitida em 30/06 e processada em 01/07 entra em julho. DPS ainda não processada (sem `dhProc`) é filtrada pela emissão. Quando as duas datas caem em dias diferentes, a listagem mostra um aviso no topo, destaca as duas datas e põe a etiqueta `DATAS DIFERENTES` na linha; passe o mouse nela para ver data e hora de cada uma, ou digite `datas diferentes` na busca para listar só essas notas. O resumo `.csv` traz as colunas `Processamento` e `Datas diferentes`.
+
+## Interface simples
+
+No topo da página há o seletor **Interface**: `Clássica` (a folha de formulário contínuo) ou `Simples` (visual sóbrio, sem enfeites). É só aparência: as funções, os filtros e o ZIP são os mesmos. A escolha fica salva no perfil do navegador aberto pelo `.bat`.
 
 ## O que vem no ZIP
 

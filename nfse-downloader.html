@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Download NFS-e Nacional — Retirada em Lote</title>
-<style>
+<style id="css-classica">
   /* ── Papel de formulário contínuo ──────────────────────────────
      A página é uma folha de listagem de impressora matricial:
      listras verdes, furos de tracionador, quadros de formulário. */
@@ -26,6 +26,9 @@
     --ret-bg: #fbf0c2;        /* linha de nota com valores retidos */
     --ret-line: #b08a12;
     --ret-ink: #6a5200;
+    --div-bg: #fbe6d8;        /* emissão e processamento em dias diferentes */
+    --div-line: #b8571f;
+    --div-ink: #85360c;
     --mono: "Cascadia Mono", Consolas, "Courier New", monospace;
     --sans: "Segoe UI", system-ui, sans-serif;
   }
@@ -63,6 +66,15 @@
 
   /* ── Cabeçalho de listagem ── */
   header { margin-bottom: 22px; }
+  /* Seletor de interface; .ui-s = texto que só aparece na interface simples */
+  .ui-switch {
+    display: flex; justify-content: flex-end; margin-bottom: 8px;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-2);
+  }
+  .ui-switch label { font-size: inherit; }
+  .ui-switch select { font-size: 11px; padding: 2px 4px; margin-left: 6px; }
+  .ui-s { display: none !important; }
   .letterhead-top {
     display: flex; justify-content: space-between; align-items: baseline;
     font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
@@ -144,6 +156,8 @@
   select { accent-color: var(--stamp); }
 
   .hint { font-size: 12px; color: var(--ink-2); line-height: 1.55; margin: 8px 0 0; }
+  .nsu-row { margin: 12px 0 0; }
+  .nsu-efetivo { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
 
   /* ── Botões: carimbos ── */
   button {
@@ -220,7 +234,7 @@
   table.docs thead th .arrow { color: var(--stamp); }
   table.docs tbody tr:nth-child(even) { background: rgba(226, 237, 214, .55); }
   table.docs tbody tr.cancelada td { color: var(--err); }
-  /* Nota com vBC ≠ vLiq: há valores retidos — linha amarela marcada na lateral */
+  /* Nota com tributo retido (ou vBC ≠ vLiq) — linha amarela marcada na lateral */
   table.docs tbody tr.retido,
   table.docs tbody tr.retido:nth-child(even) { background: var(--ret-bg); }
   table.docs tbody tr.retido td:first-child { box-shadow: inset 3px 0 0 var(--ret-line); }
@@ -230,6 +244,14 @@
     padding: 0 5px; border: 1px solid var(--ret-line);
     background: #fff8dc; color: var(--ret-ink); white-space: nowrap;
   }
+  /* Emissão (dhEmi) num dia e processamento (dhProc) em outro */
+  .tag-data {
+    display: inline-block; margin-left: 6px;
+    font-size: 9.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    padding: 0 5px; border: 1px solid var(--div-line);
+    background: var(--div-bg); color: var(--div-ink); white-space: nowrap;
+  }
+  table.docs td.data-div { color: var(--div-ink); font-weight: 700; }
   table.docs td.money, table.docs td.right { text-align: right; }
   table.docs td.name { max-width: 210px; overflow: hidden; text-overflow: ellipsis; }
   table.docs td.check, table.docs th.check { width: 30px; text-align: center; padding-right: 0; }
@@ -276,10 +298,244 @@
     button:active { transform: none; }
   }
 </style>
+<style id="css-simples" media="not all">
+  /* ── Interface simples ─────────────────────────────────────────
+     Alternativa sóbria à folha de formulário contínuo: mesma marcação e
+     mesmos IDs, só a apresentação muda. Fica desligada (media="not all")
+     até ser escolhida no seletor "Interface". */
+  :root {
+    --bg: #f3f4f6;
+    --surface: #ffffff;
+    --surface-2: #f7f8fa;
+    --border: #dadde2;
+    --border-strong: #b9bec7;
+    --text: #1f2328;
+    --muted: #5d6573;
+    --accent: #1f5fae;
+    --accent-hover: #184e90;
+    --ok: #1d6b3f;
+    --err: #b42318;
+    --warn-bg: #fff8e6;
+    --warn-line: #e4c76f;
+    --warn-ink: #5a4300;
+    --ret-bg: #fff7da;
+    --ret-line: #c9a227;
+    --ret-ink: #664f00;
+    --div-bg: #fdeee5;
+    --div-line: #d98a5c;
+    --div-ink: #8c3812;
+    --sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+    --mono: Consolas, "Cascadia Mono", "Courier New", monospace;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body {
+    margin: 0; padding: 24px 16px 40px;
+    background: var(--bg); color: var(--text);
+    font-family: var(--sans); font-size: 14px; line-height: 1.5;
+  }
+  .hidden, .ui-c { display: none !important; }
+
+  /* Página: uma coluna; filtros logo acima da lista */
+  .sheet {
+    max-width: 1200px; margin: 0 auto;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .sheet > * { margin: 0; }
+  #status { order: 1; }
+  #corsHint { order: 2; }
+  #secEmpresa { order: 3; }
+  .actions { order: 4; }
+  #progressCard { order: 5; }
+  #secFiltros { order: 6; }
+  #listCard { order: 7; }
+  #secObs { order: 8; }
+  footer { order: 9; }
+
+  /* Cabeçalho */
+  header {
+    display: grid; grid-template-columns: 1fr auto; column-gap: 16px;
+    padding-bottom: 14px; border-bottom: 1px solid var(--border);
+  }
+  .letterhead-top { display: none; }
+  h1 { grid-column: 1; grid-row: 1; margin: 0; font-size: 22px; font-weight: 600; line-height: 1.3; }
+  .letterhead-sub { grid-column: 1; grid-row: 2; margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+  .ui-switch { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: 13px; color: var(--muted); }
+
+  /* Mensagens */
+  .status {
+    padding: 10px 14px; word-break: break-word;
+    background: var(--surface);
+    border: 1px solid var(--border); border-left: 4px solid var(--border-strong); border-radius: 4px;
+  }
+  .status.ok { border-left-color: var(--ok); }
+  .status.error { border-left-color: var(--err); color: var(--err); }
+  .warn {
+    padding: 12px 14px; font-size: 13px; line-height: 1.6;
+    background: var(--warn-bg); color: var(--warn-ink);
+    border: 1px solid var(--warn-line); border-radius: 4px;
+  }
+  .quadro .warn { margin-bottom: 12px; }
+  .warn code { background: rgba(90, 67, 0, .1); }
+
+  /* Seções */
+  .quadro {
+    background: var(--surface);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 16px 20px;
+  }
+  .quadro-label { display: block; margin: 0 0 12px; font-size: 15px; font-weight: 600; }
+
+  #secEmpresa {
+    display: grid; column-gap: 24px; row-gap: 4px;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+  }
+  #secEmpresa .quadro-label, #secEmpresa .hint, #secEmpresa .nsu-row { grid-column: 1 / -1; }
+  #secEmpresa .nsu-row { margin: 10px 0 0; }
+  .nsu-efetivo { font-size: 12.5px; color: var(--muted); }
+  .kv { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; }
+  #secEmpresa .kv { flex-direction: column; gap: 0; padding: 0; }
+  .kv .k { font-size: 12px; color: var(--muted); }
+  .kv .v { font-weight: 600; word-break: break-word; }
+
+  /* Formulário */
+  .row { display: flex; gap: 10px 18px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .row:last-child { margin-bottom: 0; }
+  label { font-size: 13px; }
+  input[type=date], input[type=number], input[type=search], input[type=text], select {
+    font: inherit; font-size: 13px; color: var(--text);
+    height: 32px; padding: 0 8px; margin-left: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong); border-radius: 4px;
+  }
+  input[type=number] { width: 130px; }
+  input[type=search] { width: 320px; max-width: 100%; }
+  input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; margin: 0 4px 0 0; vertical-align: -3px; }
+  :is(button, input, select, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .hint { margin: 10px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--muted); }
+  code { font-family: var(--mono); font-size: 12px; background: #eef0f3; padding: 1px 5px; border-radius: 3px; }
+
+  /* Botões */
+  button {
+    font: inherit; font-size: 13px; font-weight: 500;
+    height: 34px; padding: 0 14px; cursor: pointer;
+    color: var(--text); background: var(--surface);
+    border: 1px solid var(--border-strong); border-radius: 4px;
+  }
+  button:hover { background: #eff1f4; }
+  button:disabled { opacity: .55; cursor: default; }
+  button:disabled:hover { background: var(--surface); }
+  button.primary { color: #fff; background: var(--accent); border-color: var(--accent); }
+  button.primary:hover { background: var(--accent-hover); }
+  button.primary:disabled:hover { background: var(--accent); }
+  button.danger { color: var(--err); border-color: #e2a59e; }
+  button.small { height: 30px; padding: 0 10px; font-size: 12.5px; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Progresso: barra fina; o percentual vem de --pct */
+  #bar {
+    height: 6px; margin: 0 0 8px; overflow: hidden;
+    font-size: 0; color: transparent; border-radius: 3px;
+    background: linear-gradient(to right, var(--accent) var(--pct, 0%), #e3e6ea 0);
+  }
+  .progress-line { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+  #errorBox { margin-top: 10px; font-size: 12.5px; color: var(--err); word-break: break-word; }
+
+  /* Tabela */
+  .table-wrap {
+    max-height: 520px; overflow: auto;
+    background: var(--surface);
+    border: 1px solid var(--border); border-radius: 4px;
+  }
+  table.docs { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  table.docs th, table.docs td {
+    padding: 6px 10px; text-align: left; white-space: nowrap;
+    border-bottom: 1px solid #eceef1;
+  }
+  table.docs thead th {
+    position: sticky; top: 0; z-index: 1;
+    background: var(--surface-2); border-bottom: 1px solid var(--border);
+    font-size: 12px; font-weight: 600; color: var(--muted);
+    cursor: pointer; user-select: none;
+  }
+  table.docs thead th.nosort { cursor: default; }
+  table.docs thead th .arrow { font-size: 10px; color: var(--accent); }
+  table.docs tbody tr:hover { background: var(--surface-2); }
+  table.docs tbody tr.cancelada td { color: var(--err); }
+  table.docs tbody tr.retido { background: var(--ret-bg); }
+  table.docs tbody tr.retido td:first-child { box-shadow: inset 3px 0 0 var(--ret-line); }
+  table.docs td.money, table.docs td.right { text-align: right; }
+  table.docs td.name { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+  table.docs td.check, table.docs th.check { width: 32px; text-align: center; padding-right: 0; }
+  table.docs td.data-div { color: var(--div-ink); font-weight: 600; }
+  .tag-ret, .tag-data {
+    display: inline-block; margin-left: 6px; padding: 0 6px;
+    font-size: 11px; font-weight: 600; line-height: 18px; white-space: nowrap;
+    border-radius: 3px;
+  }
+  .tag-ret { color: var(--ret-ink); background: #fff1c2; border: 1px solid var(--ret-line); }
+  .tag-data { color: var(--div-ink); background: var(--div-bg); border: 1px solid var(--div-line); }
+  .empty-row { padding: 18px 12px; font-size: 13px; color: var(--muted); }
+
+  .list-toolbar {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 12px; flex-wrap: wrap; margin-top: 10px;
+    font-size: 13px; color: var(--muted);
+  }
+  .sel-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Totais: blocos com rótulo e número */
+  .listagem {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+    gap: 8px; margin-top: 16px;
+  }
+  .listagem .lrow {
+    display: flex; flex-direction: column; justify-content: space-between; gap: 2px;
+    padding: 10px 12px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px;
+  }
+  .listagem .lrow > span:first-child { font-size: 11px; letter-spacing: .03em; color: var(--muted); }
+  .listagem .leader { display: none; }
+  .listagem .num { font-size: 17px; font-weight: 600; }
+
+  /* Observações e rodapé */
+  details summary { cursor: pointer; font-size: 13.5px; font-weight: 600; }
+  details ol { margin: 10px 0 0; padding-left: 20px; font-size: 13px; line-height: 1.7; }
+  footer { text-align: center; font-size: 12px; color: var(--muted); }
+
+  @media (max-width: 640px) {
+    header { grid-template-columns: 1fr; }
+    .ui-switch { grid-column: 1; grid-row: 3; justify-self: start; margin-top: 8px; }
+    #secEmpresa { grid-template-columns: 1fr; row-gap: 8px; }
+  }
+</style>
+<script>
+// Interface escolhida (clássica ou simples). Roda antes do <body> para a
+// página já abrir no visual certo, sem mostrar o outro por um instante.
+window.nfseAplicarUi = function (ui) {
+  ui = ui === 'simples' ? 'simples' : 'classica';
+  document.documentElement.dataset.ui = ui;
+  document.getElementById('css-classica').media = ui === 'classica' ? 'all' : 'not all';
+  document.getElementById('css-simples').media = ui === 'simples' ? 'all' : 'not all';
+};
+(function () {
+  var ui = null;
+  try { ui = localStorage.getItem('nfse.ui'); } catch (_) {}
+  window.nfseAplicarUi(ui);
+})();
+</script>
 </head>
 <body>
 <div class="sheet">
   <header>
+    <div class="ui-switch">
+      <label>Interface
+        <select id="uiSelect" title="Muda só a aparência da página; as funções são as mesmas.">
+          <option value="classica">Clássica</option>
+          <option value="simples">Simples</option>
+        </select>
+      </label>
+    </div>
     <div class="letterhead-top">
       <span>Ambiente de Dados Nacional · ADN</span>
       <span id="folha">Folha 01</span>
@@ -297,20 +553,30 @@
     3) Se você cancelou o seletor de certificado por engano, feche <em>todas</em> as janelas do Chrome deste perfil e abra de novo pelo .bat.
   </div>
 
-  <section class="quadro">
-    <span class="quadro-label">Quadro 01 · Identificação do contribuinte</span>
+  <section class="quadro" id="secEmpresa">
+    <span class="quadro-label"><span class="ui-c">Quadro 01 · </span>Identificação do contribuinte</span>
     <div class="kv"><span class="k">Nome</span><span class="v" id="empresaNome">—</span></div>
     <div class="kv"><span class="k">CNPJ/CPF</span><span class="v" id="empresaCnpj">—</span></div>
     <div class="kv"><span class="k">Última consulta</span><span class="v" id="lastSyncAt">nunca</span></div>
-    <p class="hint">A consulta sempre parte do <strong>NSU 0</strong> e traz <strong>todo o histórico</strong> disponível para o certificado.
-    Os documentos são listados no Quadro 04; os filtros do Quadro 02 servem só para escolher o que entra no ZIP.</p>
+    <div class="row nsu-row">
+      <label>NSU inicial <input type="number" id="nsuInicial" min="0" step="1" value="0"></label>
+      <label><input type="checkbox" id="optVoltarNsu" checked> Consultar também os 500 NSUs anteriores</label>
+      <span class="nsu-efetivo" id="nsuEfetivo"></span>
+    </div>
+    <p class="hint">A busca vai do <strong>NSU inicial</strong> (inclusive) até o fim do feed. O campo é preenchido sozinho com o NSU seguinte ao último já recebido desta empresa — guardado neste navegador, separado por CNPJ. Digite <strong>0</strong> para trazer todo o histórico.
+    Com <em>500 NSUs anteriores</em> marcado, a busca recua 500 NSUs antes do inicial (inicial 12000 → começa no 11500; se o inicial for 500 ou menos, começa do 0), e as notas mais recentes entram de novo na listagem.
+    Os documentos são listados <span class="ui-c">no Quadro 04</span><span class="ui-s">em <em>Documentos encontrados</em></span>; os filtros <span class="ui-c">do Quadro 02</span><span class="ui-s">da listagem</span> servem só para escolher o que entra no ZIP.</p>
   </section>
 
-  <section class="quadro">
-    <span class="quadro-label">Quadro 02 · Filtros da listagem</span>
+  <section class="quadro" id="secFiltros">
+    <span class="quadro-label"><span class="ui-c">Quadro 02 · </span>Filtros da listagem</span>
     <div class="row">
-      <label>De <input type="date" id="startDate"></label>
+      <label>Processadas de <input type="date" id="startDate"></label>
       <label>até <input type="date" id="endDate"></label>
+    </div>
+    <div class="row">
+      <label>Competência de <input type="date" id="competStart"></label>
+      <label>até <input type="date" id="competEnd"></label>
     </div>
     <div class="row">
       <label>Tipo
@@ -336,25 +602,29 @@
       <label><input type="checkbox" id="excludeCancelled"> Não listar notas canceladas</label>
       <button id="btnLimparFiltros" class="small">Limpar filtros</button>
     </div>
-    <p class="hint">Os filtros são aplicados na listagem, na hora — nada é buscado de novo na API. O ZIP leva exatamente o que estiver listado e marcado.</p>
+    <p class="hint"><em>Processadas de/até</em> considera a <strong>data de processamento</strong> da nota (<code>dhProc</code>), não a de emissão (<code>dhEmi</code>); DPS ainda não processada usa a emissão.
+    <em>Competência de/até</em> considera a <strong>data de competência</strong> (<code>dCompet</code>); eventos, que não têm competência, usam a data de emissão. Os dois períodos podem ser usados juntos.
+    Os filtros são aplicados na listagem, na hora — nada é buscado de novo na API. O ZIP leva exatamente o que estiver listado e marcado.</p>
   </section>
 
   <div class="actions">
     <button id="btnCert">Selecionar certificado…</button>
     <button id="btnCheck">Testar conexão</button>
-    <button id="btnSync" class="primary">Buscar todas as notas</button>
+    <button id="btnSync" class="primary">Buscar notas</button>
     <button id="btnStop" class="danger hidden">Parar</button>
   </div>
 
   <section class="quadro hidden" id="progressCard">
-    <span class="quadro-label">Quadro 03 · Execução</span>
+    <span class="quadro-label"><span class="ui-c">Quadro 03 · </span>Execução</span>
     <div id="bar" aria-hidden="true"></div>
     <div class="progress-line"><span id="progressLabel">—</span><span id="progressCount"></span></div>
     <div id="errorBox" class="hidden"></div>
   </section>
 
   <section class="quadro hidden" id="listCard">
-    <span class="quadro-label">Quadro 04 · Documentos encontrados</span>
+    <span class="quadro-label"><span class="ui-c">Quadro 04 · </span>Documentos encontrados</span>
+
+    <div id="avisoDatas" class="warn hidden" role="note"></div>
 
     <div class="table-wrap">
       <table class="docs">
@@ -365,6 +635,7 @@
             <th data-sort="tipo">Tipo</th>
             <th data-sort="numero">Número</th>
             <th data-sort="emissao">Emissão</th>
+            <th data-sort="proc">Processamento</th>
             <th data-sort="compet">Competência</th>
             <th data-sort="prestador">Prestador</th>
             <th data-sort="tomador">Tomador</th>
@@ -376,7 +647,8 @@
       </table>
       <div id="emptyRow" class="empty-row hidden">Nenhum documento passou nos filtros.</div>
     </div>
-    <p class="hint">Linhas em <strong>amarelo</strong> com a etiqueta <em>Valores retidos</em>: a nota tem o valor bruto (<code>vBC</code>) diferente do líquido (<code>vLiq</code>). Passe o mouse na etiqueta para ver os valores; digite <code>retido</code> na busca para listar só elas.</p>
+    <p class="hint">Linhas em <strong>amarelo</strong> com a etiqueta <em>Valores retidos</em>: a nota tem tributo retido (IRRF, INSS, CSLL, PIS/COFINS ou ISSQN retido) — mesmo que o valor bruto (<code>vBC</code>) seja igual ao líquido (<code>vLiq</code>) — ou tem o bruto diferente do líquido. Passe o mouse na etiqueta para ver os valores; digite <code>retido</code> (ou o tributo, como <code>irrf</code>) na busca para listar só elas.
+    Etiqueta <em>Datas diferentes</em>: a nota foi emitida (<code>dhEmi</code>) num dia e processada (<code>dhProc</code>) em outro.</p>
 
     <div class="list-toolbar">
       <span id="listInfo">—</span>
@@ -394,6 +666,7 @@
       <div class="lrow"><span>NFS-E MARCADAS</span><span class="leader"></span><span class="num" id="sumNfse">0</span></div>
       <div class="lrow"><span>EVENTOS MARCADOS</span><span class="leader"></span><span class="num" id="sumEvento">0</span></div>
       <div class="lrow"><span>NOTAS COM VALORES RETIDOS</span><span class="leader"></span><span class="num" id="sumRetidas">0</span></div>
+      <div class="lrow"><span>NOTAS COM DATAS DIFERENTES</span><span class="leader"></span><span class="num" id="sumDatasDiv">0</span></div>
       <div class="lrow"><span>VALOR LÍQUIDO MARCADO</span><span class="leader"></span><span class="num" id="sumValor">R$ 0,00</span></div>
       <div class="lrow"><span>VALOR RETIDO MARCADO</span><span class="leader"></span><span class="num" id="sumRetido">R$ 0,00</span></div>
     </div>
@@ -417,7 +690,7 @@
     </div>
   </section>
 
-  <section class="quadro">
+  <section class="quadro" id="secObs">
     <span class="quadro-label">Observações</span>
     <details>
       <summary>Como usar / limitações</summary>
@@ -425,9 +698,9 @@
         <li>Abra sempre pelo <code>NFSe Downloader.bat</code> — abrir o .html direto faz o navegador bloquear a API por CORS.</li>
         <li>O certificado digital (A1 instalado no Windows ou A3 no token) precisa estar disponível no computador. O Chrome mostra o seletor de certificado na primeira conexão com <code>adn.nfse.gov.br</code>.</li>
         <li>O Chrome memoriza o certificado escolhido até ser totalmente fechado. Para trocar de empresa, feche todas as janelas desse Chrome e abra de novo pelo .bat.</li>
-        <li>A busca varre o feed inteiro a partir do NSU 0 a cada execução — em caixas grandes isso demora alguns minutos. Você pode clicar em <em>Parar</em>: o que já veio continua listado.</li>
-        <li>Esta página não envia dados para lugar nenhum: fala só com <code>adn.nfse.gov.br</code> e guarda no localStorage apenas o nome/CNPJ da última empresa detectada.</li>
-        <li>Notas canceladas: o cancelamento é um EVENTO separado. Como a busca traz o feed inteiro, todo cancelamento existente é reconhecido e a nota correspondente aparece marcada como CANCELADA.</li>
+        <li>A busca vai do NSU inicial até o fim do feed. Com o NSU inicial em 0 ela traz o histórico inteiro — em caixas grandes isso demora alguns minutos. Você pode clicar em <em>Parar</em>: o que já veio continua listado.</li>
+        <li>Esta página não envia dados para lugar nenhum: fala só com <code>adn.nfse.gov.br</code> e guarda no localStorage apenas o nome/CNPJ das empresas detectadas e o último NSU recebido de cada uma.</li>
+        <li>Notas canceladas: o cancelamento é um EVENTO separado, que entra no feed depois da nota. Como a busca sempre vai até o fim do feed, toda nota listada tem o cancelamento reconhecido e aparece marcada como CANCELADA.</li>
       </ol>
     </details>
   </section>
@@ -541,6 +814,31 @@ function toCents(v) {
   return isNaN(n) ? null : Math.round(n * 100);
 }
 
+// tpRetPisCofins → se PIS e/ou COFINS foram retidos (a CSLL vem em vRetCSLL).
+const PIS_RETIDO = new Set(['1', '3', '4', '5', '9']);
+const COFINS_RETIDO = new Set(['1', '3', '4', '6', '7']);
+
+// Tributos retidos declarados no XML: [{ nome: 'IRRF', tag: 'vRetIRRF', cents: 1500 }, ...].
+function extractRetencoes(root) {
+  const lista = [];
+  const add = (nome, tag, parent) => {
+    const cents = toCents(getText(parent, tag));
+    if (cents != null && cents > 0) lista.push({ nome, tag, cents });
+  };
+  const tribFed = root.querySelector('tribFed');
+  if (tribFed) {
+    add('IRRF', 'vRetIRRF', tribFed);
+    add('INSS', 'vRetCP', tribFed);
+    add('CSLL', 'vRetCSLL', tribFed);
+    const tpRet = getText(tribFed, 'tpRetPisCofins');
+    if (PIS_RETIDO.has(tpRet)) add('PIS', 'vPis', tribFed);
+    if (COFINS_RETIDO.has(tpRet)) add('COFINS', 'vCofins', tribFed);
+  }
+  const tpRetIss = getText(root, 'tpRetISSQN');
+  if (tpRetIss === '2' || tpRetIss === '3') add('ISSQN', 'vISSQN', root);
+  return lista;
+}
+
 function extractXmlMetadata(xmlString) {
   try {
     const doc = new DOMParser().parseFromString(xmlString, 'text/xml');
@@ -549,6 +847,7 @@ function extractXmlMetadata(xmlString) {
     const meta = {
       numero: getText(root, 'nNFSe', 'nDPS'),
       dataEmissao: getText(root, 'dhEmi') || getText(root, 'dhProc') || getText(root, 'dhEvento'),
+      dataProcessamento: getText(root, 'dhProc'),
       dataCompetencia: getText(root, 'dCompet'),
       valorServicos: getText(root, 'vServ', 'vLiq'),
       valorLiquido: getText(root, 'vLiq', 'vServ'),
@@ -571,15 +870,33 @@ function extractXmlMetadata(xmlString) {
       meta.tomadorCpfCnpj = getText(toma, 'CPF', 'CNPJ');
       meta.tomadorNome = getText(toma, 'xNome', 'xRazSoc') || 'Tomador nao identificado';
     }
-    // Valores retidos: base de cálculo (vBC) diferente do líquido (vLiq).
+    // Valores retidos: tributo retido no XML (vTotalRet, vRetIRRF, vRetCP,
+    // vRetCSLL, PIS/COFINS ou ISSQN retidos) — mesmo com vBC = vLiq — ou,
+    // na falta deles, base de cálculo (vBC) diferente do líquido (vLiq).
+    meta.retencoes = extractRetencoes(root);
     meta.brutoCents = toCents(meta.valorBruto);
     meta.liquidoCents = toCents(meta.valorLiquido);
-    meta.retidoCents = (meta.brutoCents != null && meta.liquidoCents != null)
+    meta.diferencaCents = (meta.brutoCents != null && meta.liquidoCents != null)
       ? meta.brutoCents - meta.liquidoCents
       : null;
+    const totalRetCents = toCents(meta.valorTotalRet) || 0;
+    const somaRetCents = meta.retencoes.reduce((s, r) => s + r.cents, 0);
+    meta.retidoCents = totalRetCents > 0 ? totalRetCents
+      : somaRetCents > 0 ? somaRetCents
+      : meta.diferencaCents;
     meta.temRetencao = meta.retidoCents != null && meta.retidoCents !== 0;
 
     meta.dataEmissaoISO = meta.dataEmissao ? meta.dataEmissao.slice(0, 10) : '';
+    meta.dataProcessamentoISO = meta.dataProcessamento ? meta.dataProcessamento.slice(0, 10) : '';
+    // O filtro de período usa o processamento (dhProc). DPS avulsa ainda não
+    // foi processada — não tem dhProc — e cai na data de emissão.
+    meta.dataFiltroISO = meta.dataProcessamentoISO || meta.dataEmissaoISO;
+    // Emitida num dia e processada em outro (ex.: DPS de 30/06 processada em 01/07).
+    meta.datasDivergentes = !!(meta.dataEmissaoISO && meta.dataProcessamentoISO
+      && meta.dataEmissaoISO !== meta.dataProcessamentoISO);
+    // Filtro de competência: dCompet. Eventos não têm competência e caem na emissão.
+    meta.dataCompetenciaISO = meta.dataCompetencia ? meta.dataCompetencia.slice(0, 10) : '';
+    meta.competenciaFiltroISO = meta.dataCompetenciaISO || meta.dataEmissaoISO;
     meta.competenciaMes = meta.dataCompetencia
       ? meta.dataCompetencia.slice(0, 7)
       : (meta.dataEmissaoISO ? meta.dataEmissaoISO.slice(0, 7) : 'sem-data');
@@ -676,8 +993,11 @@ function matchesBusca(doc, termo) {
   const alvo = [
     doc.nsu, doc.chave, doc.tipoDoc, doc.tipoEvento,
     m.numero, m.prestadorNome, m.prestadorCnpj,
-    m.tomadorNome, m.tomadorCpfCnpj, m.municipio, m.dataEmissaoISO,
+    m.tomadorNome, m.tomadorCpfCnpj, m.municipio, m.dataEmissaoISO, m.dataProcessamentoISO,
+    m.dataCompetenciaISO,
     m.temRetencao ? 'retido retidos retencao retenção' : '',
+    (m.retencoes || []).map(r => r.nome).join(' '),
+    m.datasDivergentes ? 'datas diferentes data divergente' : '',
   ].join(' ').toLowerCase();
   return alvo.includes(termo);
 }
@@ -687,8 +1007,12 @@ function applyFilters(docs, filters, ownerCnpj) {
   return docs.filter(d => {
     if (filters.excludeCancelled && (d.cancelada || d.eventoCancelamento)) return false;
     if (filters.tipo !== 'all' && d.tipoDoc !== filters.tipo) return false;
-    if (filters.startDate && d.meta?.dataEmissaoISO && d.meta.dataEmissaoISO < filters.startDate) return false;
-    if (filters.endDate && d.meta?.dataEmissaoISO && d.meta.dataEmissaoISO > filters.endDate) return false;
+    const dataRef = d.meta?.dataFiltroISO;   // dhProc (ou dhEmi, se não houver)
+    if (filters.startDate && dataRef && dataRef < filters.startDate) return false;
+    if (filters.endDate && dataRef && dataRef > filters.endDate) return false;
+    const compet = d.meta?.competenciaFiltroISO;   // dCompet (ou dhEmi, se não houver)
+    if (filters.competStart && compet && compet < filters.competStart) return false;
+    if (filters.competEnd && compet && compet > filters.competEnd) return false;
     if (!matchesDirection(d, filters.direction, owner)) return false;
     if (!matchesBusca(d, filters.busca)) return false;
     return true;
@@ -2449,27 +2773,30 @@ function buildNotaPdf(doc) {
 // ── CSV resumo ────────────────────────────────────────────────────
 function buildCsv(docs) {
   const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const header = ['Tipo', 'Numero', 'Emissao', 'Competencia', 'Prestador', 'CNPJ/CPF prestador',
+  const header = ['Tipo', 'Numero', 'Emissao', 'Processamento', 'Competencia', 'Prestador', 'CNPJ/CPF prestador',
     'Tomador', 'CNPJ/CPF tomador', 'Municipio', 'Valor servico', 'Valor bruto (vBC)', 'Valor liquido',
-    'Valor retido', 'Valores retidos', 'Situacao', 'Chave de acesso'];
+    'Valor retido', 'Valores retidos', 'Tributos retidos', 'Datas diferentes', 'Situacao', 'Chave de acesso'];
   const lines = [header.join(';')];
   for (const d of docs) {
     const m = d.meta || {};
     lines.push([
       d.tipoDoc === 'NFSE' ? 'NFS-e' : (d.tipoDoc || ''), m.numero || '', m.dataEmissaoISO || '',
+      m.dataProcessamentoISO || '',
       m.competenciaMes || '', m.prestadorNome || '', m.prestadorCnpj || '',
       m.tomadorNome || '', m.tomadorCpfCnpj || '', m.municipio || '',
       (m.valorServicos || '').replace('.', ','), (m.valorBruto || '').replace('.', ','),
       (m.valorLiquido || '').replace('.', ','),
       m.retidoCents != null ? (m.retidoCents / 100).toFixed(2).replace('.', ',') : '',
       m.temRetencao ? 'SIM' : 'NAO',
+      (m.retencoes || []).map(r => `${r.nome} ${(r.cents / 100).toFixed(2).replace('.', ',')}`).join(' | '),
+      m.datasDivergentes ? 'SIM' : 'NAO',
       situacaoTexto(d), d.chave || '',
     ].map(esc).join(';'));
   }
   return '﻿' + lines.join('\r\n');
 }
 
-// ── localStorage: apenas a última empresa detectada ───────────────
+// ── localStorage: empresas detectadas e cursor NSU por CNPJ ───────
 const LS_EMPRESAS = 'nfse.empresas';
 const LS_LAST_CNPJ = 'nfse.lastCnpj';
 
@@ -2477,13 +2804,16 @@ function getEmpresas() {
   try { return JSON.parse(localStorage.getItem(LS_EMPRESAS)) || {}; }
   catch (_) { return {}; }
 }
-function saveEmpresa(cnpj, nome, { seed = false } = {}) {
+function saveEmpresa(cnpj, nome, { seed = false, lastNSU = 0 } = {}) {
   const empresas = getEmpresas();
   const prev = empresas[cnpj] || {};
   empresas[cnpj] = {
     cnpj,
     nome: nome || prev.nome || '',
     lastSyncAt: seed ? (prev.lastSyncAt || null) : new Date().toISOString(),
+    // Maior NSU já recebido. Nunca recua: uma busca que recomeçou de um NSU
+    // menor e foi interrompida não apaga o avanço anterior.
+    lastNSU: Math.max(Number(prev.lastNSU) || 0, lastNSU),
   };
   localStorage.setItem(LS_EMPRESAS, JSON.stringify(empresas));
   localStorage.setItem(LS_LAST_CNPJ, cnpj);
@@ -2498,9 +2828,12 @@ const progressCard = $('#progressCard'), bar = $('#bar');
 const progressLabel = $('#progressLabel'), progressCount = $('#progressCount');
 const listCard = $('#listCard'), docRows = $('#docRows'), emptyRow = $('#emptyRow');
 const listInfo = $('#listInfo'), chkAll = $('#chkAll'), errorBox = $('#errorBox');
+const avisoDatas = $('#avisoDatas');
+const nsuInicialInput = $('#nsuInicial'), optVoltarNsu = $('#optVoltarNsu'), nsuEfetivoEl = $('#nsuEfetivo');
 
 let currentEmpresa = null;   // { cnpj, nome } do certificado ativo
 let stopRequested = false;
+let nsuDigitado = false;     // o usuário mexeu no NSU inicial: não sobrescrever
 let allDocs = [];            // tudo que veio da API, decodificado
 let filteredDocs = [];       // o que está listado agora
 const selected = new Set();  // NSUs marcados para o ZIP
@@ -2520,6 +2853,7 @@ function setProgress(label, count, pct) {
     const p = Math.max(0, Math.min(100, Math.round(pct)));
     const filled = Math.round((p / 100) * BAR_CELLS);
     bar.textContent = '▓'.repeat(filled) + '░'.repeat(BAR_CELLS - filled) + '  ' + p + '%';
+    bar.style.setProperty('--pct', p + '%');   // barra da interface simples
   }
 }
 function showEmpresa(cnpj, nome) {
@@ -2527,6 +2861,29 @@ function showEmpresa(cnpj, nome) {
   empresaCnpjEl.textContent = cnpj ? formatCnpjCpf(cnpj) : '—';
   const e = getEmpresas()[cnpj];
   lastSyncEl.textContent = e?.lastSyncAt ? new Date(e.lastSyncAt).toLocaleString('pt-BR') : 'nunca';
+  // NSU inicial sugerido: o seguinte ao último já recebido desta empresa.
+  if (!nsuDigitado) {
+    const ultimo = Number(e?.lastNSU) || 0;
+    nsuInicialInput.value = ultimo > 0 ? ultimo + 1 : 0;
+  }
+  updateNsuEfetivo();
+}
+
+// ── NSU inicial ───────────────────────────────────────────────────
+const VOLTAR_NSU = 500;   // quantos NSUs antes do inicial a busca recua
+function readNsuInicial() {
+  return Math.max(0, parseInt(nsuInicialInput.value, 10) || 0);
+}
+// Primeiro NSU que a busca traz: o inicial, ou 500 antes dele (nunca abaixo de 0).
+function nsuInicioBusca() {
+  const inicial = readNsuInicial();
+  return optVoltarNsu.checked ? Math.max(0, inicial - VOLTAR_NSU) : inicial;
+}
+function updateNsuEfetivo() {
+  const inicio = nsuInicioBusca();
+  nsuEfetivoEl.textContent = inicio === 0
+    ? '→ começa do NSU 0 (histórico inteiro)'
+    : `→ começa no NSU ${inicio}`;
 }
 
 // ── Listagem ──────────────────────────────────────────────────────
@@ -2549,20 +2906,35 @@ function situacaoTexto(d) {
 }
 
 function retencaoTitulo(m) {
-  const partes = [
-    `Bruto (vBC): ${fmtMoney(m.brutoCents / 100)}`,
-    `Líquido (vLiq): ${fmtMoney(m.liquidoCents / 100)}`,
-    `Diferença: ${fmtMoney(m.retidoCents / 100)}`,
-  ];
+  const partes = (m.retencoes || []).map(r => `${r.nome} (${r.tag}): ${fmtMoney(r.cents / 100)}`);
   const ret = toCents(m.valorTotalRet);
   if (ret != null) partes.push(`vTotalRet: ${fmtMoney(ret / 100)}`);
+  if (m.brutoCents != null) partes.push(`Bruto (vBC): ${fmtMoney(m.brutoCents / 100)}`);
+  if (m.liquidoCents != null) partes.push(`Líquido (vLiq): ${fmtMoney(m.liquidoCents / 100)}`);
+  if (m.diferencaCents != null) partes.push(`Diferença: ${fmtMoney(m.diferencaCents / 100)}`);
   return partes.join(' · ');
 }
+
+// "2026-06-30T23:58:10-03:00" → "30/06/2026 23:58" (data e hora como vêm no XML).
+function fmtDataHora(raw) {
+  if (!raw) return '—';
+  const hora = raw.slice(11, 16);
+  return fmtDateBR(raw) + (hora ? ` ${hora}` : '');
+}
+function datasTitulo(m) {
+  return `Emissão (dhEmi): ${fmtDataHora(m.dataEmissao)} · Processamento (dhProc): ${fmtDataHora(m.dataProcessamento)}`;
+}
+
+// Referência à seção da lista nas mensagens, conforme a interface escolhida.
+const refLista = () => document.documentElement.dataset.ui === 'simples'
+  ? 'em "Documentos encontrados"' : 'no Quadro 04';
 
 function readFilters() {
   return {
     startDate: $('#startDate').value || null,
     endDate: $('#endDate').value || null,
+    competStart: $('#competStart').value || null,
+    competEnd: $('#competEnd').value || null,
     tipo: $('#filterTipo').value,
     direction: $('#filterDirection').value,
     excludeCancelled: $('#excludeCancelled').checked,
@@ -2575,7 +2947,8 @@ const SORT_ACCESSORS = {
   tipo: d => d.tipoDoc || '',
   numero: d => parseInt(d.meta?.numero, 10) || 0,
   emissao: d => d.meta?.dataEmissaoISO || '',
-  compet: d => d.meta?.competenciaMes || '',
+  proc: d => d.meta?.dataProcessamentoISO || '',
+  compet: d => d.meta?.dataCompetenciaISO || '',
   prestador: d => (d.meta?.prestadorNome || '').toLowerCase(),
   tomador: d => (d.meta?.tomadorNome || '').toLowerCase(),
   valor: d => parseFloat(d.meta?.valorLiquido) || 0,
@@ -2605,6 +2978,18 @@ function refreshList({ resetLimit = true } = {}) {
   filteredDocs = sortDocs(applyFilters(allDocs, readFilters(), currentEmpresa?.cnpj));
   renderRows();
   updateTotals();
+  updateAvisoDatas();
+}
+
+// Aviso: notas listadas com emissão (dhEmi) num dia e processamento (dhProc) em outro.
+function updateAvisoDatas() {
+  const n = filteredDocs.filter(d => d.meta?.datasDivergentes).length;
+  avisoDatas.classList.toggle('hidden', n === 0);
+  if (!n) return;
+  avisoDatas.innerHTML = `<strong>Atenção:</strong> ${n === 1 ? '1 nota listada tem' : `${fmtNum(n)} notas listadas têm`} `
+    + `a data de emissão (<code>dhEmi</code>) diferente da data de processamento (<code>dhProc</code>). `
+    + `O filtro <em>Processadas de/até</em> usa a data de processamento. ${n === 1 ? 'Ela está' : 'Elas estão'} com a etiqueta <em>Datas diferentes</em>; `
+    + `passe o mouse nela para ver as duas datas, ou digite <code>datas diferentes</code> na busca para listar só ${n === 1 ? 'ela' : 'elas'}.`;
 }
 
 function renderRows() {
@@ -2616,17 +3001,21 @@ function renderRows() {
     const tagRet = m.temRetencao
       ? ` <span class="tag-ret" title="${escHtml(retencaoTitulo(m))}">Valores retidos</span>`
       : '';
+    const tagData = m.datasDivergentes
+      ? ` <span class="tag-data" title="${escHtml(datasTitulo(m))}">Datas diferentes</span>`
+      : '';
     return `<tr class="${classes}">` +
       `<td class="check"><input type="checkbox" data-nsu="${d.nsu}"${checked}></td>` +
       `<td class="right">${escHtml(d.nsu)}</td>` +
       `<td>${escHtml(TIPO_LABEL[d.tipoDoc] || d.tipoDoc || '—')}</td>` +
       `<td class="right">${escHtml(m.numero || '—')}</td>` +
-      `<td>${escHtml(fmtDateBR(m.dataEmissaoISO))}</td>` +
-      `<td>${escHtml(m.competenciaMes || '—')}</td>` +
+      `<td${m.datasDivergentes ? ' class="data-div"' : ''}>${escHtml(fmtDateBR(m.dataEmissaoISO))}</td>` +
+      `<td${m.datasDivergentes ? ' class="data-div"' : ''}>${escHtml(fmtDateBR(m.dataProcessamentoISO))}</td>` +
+      `<td>${escHtml(fmtDateBR(m.dataCompetenciaISO))}</td>` +
       `<td class="name" title="${escHtml(m.prestadorNome || '')}">${escHtml(m.prestadorNome || '—')}</td>` +
       `<td class="name" title="${escHtml(m.tomadorNome || '')}">${escHtml(m.tomadorNome || '—')}</td>` +
       `<td class="money">${m.valorLiquido ? escHtml(fmtMoney(parseFloat(m.valorLiquido))) : '—'}</td>` +
-      `<td>${escHtml(situacaoTexto(d))}${tagRet}</td>` +
+      `<td>${escHtml(situacaoTexto(d))}${tagRet}${tagData}</td>` +
     `</tr>`;
   }).join('');
   docRows.innerHTML = html;
@@ -2638,7 +3027,7 @@ function renderRows() {
 
 function updateTotals() {
   const marcados = filteredDocs.filter(d => selected.has(d.nsu));
-  let nfse = 0, evento = 0, centavos = 0, retidas = 0, retidoCentavos = 0;
+  let nfse = 0, evento = 0, centavos = 0, retidas = 0, retidoCentavos = 0, datasDiv = 0;
   for (const d of marcados) {
     if (d.tipoDoc === 'NFSE') {
       nfse++;
@@ -2646,6 +3035,7 @@ function updateTotals() {
       if (!isNaN(v)) centavos += Math.round(v * 100);
     } else if (d.tipoDoc === 'EVENTO') evento++;
     if (d.meta?.temRetencao) { retidas++; retidoCentavos += d.meta.retidoCents; }
+    if (d.meta?.datasDivergentes) datasDiv++;
   }
   $('#sumDocs').textContent = fmtNum(allDocs.length);
   $('#sumFiltrados').textContent = fmtNum(filteredDocs.length);
@@ -2653,6 +3043,7 @@ function updateTotals() {
   $('#sumNfse').textContent = fmtNum(nfse);
   $('#sumEvento').textContent = fmtNum(evento);
   $('#sumRetidas').textContent = fmtNum(retidas);
+  $('#sumDatasDiv').textContent = fmtNum(datasDiv);
   $('#sumValor').textContent = fmtMoney(centavos / 100);
   $('#sumRetido').textContent = fmtMoney(retidoCentavos / 100);
 
@@ -2707,11 +3098,11 @@ async function checkConnection() {
     saveEmpresa(probe.owner.cnpj, probe.owner.nome, { seed: true });
     showEmpresa(probe.owner.cnpj, probe.owner.nome);
   }
-  setStatus('ok', `Conectado à API NFS-e Nacional — ${probe.total}+ documentos disponíveis. Clique em "Buscar todas as notas".`);
+  setStatus('ok', `Conectado à API NFS-e Nacional — ${probe.total}+ documentos disponíveis. Clique em "Buscar notas".`);
   return probe;
 }
 
-// ── Busca completa: sempre do NSU 0 até o fim do feed ─────────────
+// ── Busca: do NSU inicial (ou 500 antes) até o fim do feed ────────
 async function buscarNotas() {
   stopRequested = false;
   btnSync.classList.add('hidden');
@@ -2725,15 +3116,20 @@ async function buscarNotas() {
 
   const state = { errors: [] };
   let parcial = false;
+  const inicio = nsuInicioBusca();
+  let highestNSU = -1;
 
   try {
-    // 1) Varrer o feed inteiro a partir do NSU 0
-    setProgress('Consultando a API a partir do NSU 0...', '', 3);
+    // 1) Varrer o feed a partir do NSU de início até o fim
+    setProgress(`Consultando a API a partir do NSU ${inicio}...`, '', 3);
     const rawDocs = [];
-    let nsu = 0, highestNSU = -1;
+    const vistos = new Set();
+    // A API é exclusiva (GET /DFe/{n} devolve NSU > n): para trazer o
+    // próprio NSU de início, o primeiro pedido usa o anterior a ele.
+    let nsu = Math.max(0, inicio - 1);
     for (let i = 0; i < HARD_BATCH_LIMIT; i++) {
       if (stopRequested) { parcial = true; break; }
-      setProgress('Buscando todas as notas...', `${rawDocs.length} documentos (NSU ${nsu})`, 3 + Math.min(i * 1.5, 47));
+      setProgress('Buscando as notas...', `${rawDocs.length} documentos (NSU ${nsu})`, 3 + Math.min(i * 1.5, 47));
       const resp = await fetchAdnBatch(nsu);
       if (!resp.ok) {
         if (resp.status === 404) break;                   // fim do feed
@@ -2747,18 +3143,26 @@ async function buscarNotas() {
       for (const doc of batch.LoteDFe) {
         const n = Number(doc.NSU);
         if (n > highestNSU) highestNSU = n;
+        if (n < inicio || vistos.has(n)) continue;
+        vistos.add(n);
         rawDocs.push({
           nsu: n, chave: doc.ChaveAcesso,
           tipoDoc: doc.TipoDocumento, tipoEvento: doc.TipoEvento || null,
           xmlBase64Gz: doc.ArquivoXml,
         });
       }
-      if (highestNSU + 1 <= nsu) break;                   // feed não avançou
-      nsu = highestNSU + 1;
+      // A API é exclusiva: GET /DFe/{n} devolve os documentos com NSU > n.
+      // O próximo pedido usa o último NSU recebido (não o seguinte), senão
+      // o primeiro documento de cada lote seguinte é pulado.
+      if (highestNSU <= nsu) break;                       // feed não avançou
+      nsu = highestNSU;
     }
 
     if (rawDocs.length === 0) {
-      setStatus('ok', 'Nenhum documento encontrado para este certificado.');
+      registrarConsulta();
+      setStatus('ok', inicio > 0
+        ? `Nenhum documento a partir do NSU ${inicio}. Para trazer todo o histórico, use NSU inicial 0.`
+        : 'Nenhum documento encontrado para este certificado.');
       setProgress('Concluído — nada a listar.', '', 100);
       finalize(); return;
     }
@@ -2787,20 +3191,20 @@ async function buscarNotas() {
     allDocs = decoded;
     for (const d of allDocs) selected.add(d.nsu);
 
-    const owner = detectOwner(allDocs.map(d => d.meta).filter(Boolean));
-    if (owner) {
-      currentEmpresa = { cnpj: owner.cnpj, nome: owner.nome };
-      saveEmpresa(owner.cnpj, owner.nome);
-      showEmpresa(owner.cnpj, owner.nome);
-    }
-    lastSyncEl.textContent = new Date().toLocaleString('pt-BR');
+    // Com o histórico inteiro, a contagem dos documentos é a melhor pista da
+    // empresa; numa busca parcial (poucos documentos) vale a sonda do NSU 0.
+    const owner = (inicio === 0 || !currentEmpresa)
+      ? detectOwner(allDocs.map(d => d.meta).filter(Boolean)) : null;
+    if (owner) currentEmpresa = { cnpj: owner.cnpj, nome: owner.nome };
+    registrarConsulta();
 
     listCard.classList.remove('hidden');
     refreshList();
     setProgress('Concluído!', `${allDocs.length} documentos listados`, 100);
+    const faixa = `NSU ${inicio} a ${highestNSU}`;
     setStatus('ok', parcial
-      ? `Busca interrompida — ${allDocs.length} documentos listados. Filtre e baixe o ZIP no Quadro 04.`
-      : `${allDocs.length} documentos baixados da API. Filtre e baixe o ZIP no Quadro 04.`);
+      ? `Busca interrompida — ${allDocs.length} documentos listados (${faixa}). Filtre e baixe o ZIP ${refLista()}.`
+      : `${allDocs.length} documentos baixados da API (${faixa}). Filtre e baixe o ZIP ${refLista()}.`);
 
     if (state.errors.length) {
       errorBox.classList.remove('hidden');
@@ -2818,6 +3222,16 @@ async function buscarNotas() {
   function finalize() {
     btnSync.classList.remove('hidden');
     btnStop.classList.add('hidden');
+  }
+
+  // Guarda a consulta e o último NSU recebido (por CNPJ) e já deixa o
+  // NSU inicial apontando para o seguinte, para a próxima busca.
+  function registrarConsulta() {
+    lastSyncEl.textContent = new Date().toLocaleString('pt-BR');
+    if (!currentEmpresa) return;
+    saveEmpresa(currentEmpresa.cnpj, currentEmpresa.nome, { lastNSU: Math.max(0, highestNSU) });
+    nsuDigitado = false;
+    showEmpresa(currentEmpresa.cnpj, currentEmpresa.nome);
   }
 }
 
@@ -2892,8 +3306,12 @@ btnCert.addEventListener('click', () => {
   setStatus('', 'Selecione o certificado na aba que abriu, feche-a e clique em "Testar conexão".');
 });
 
+// NSU inicial: o que for digitado vale para a próxima busca.
+nsuInicialInput.addEventListener('input', () => { nsuDigitado = true; updateNsuEfetivo(); });
+optVoltarNsu.addEventListener('change', updateNsuEfetivo);
+
 // Filtros: reaplicam na listagem a cada mudança.
-['#startDate', '#endDate', '#filterTipo', '#filterDirection', '#excludeCancelled'].forEach(sel => {
+['#startDate', '#endDate', '#competStart', '#competEnd', '#filterTipo', '#filterDirection', '#excludeCancelled'].forEach(sel => {
   $(sel).addEventListener('change', () => refreshList());
 });
 let buscaTimer = null;
@@ -2904,6 +3322,8 @@ $('#filterBusca').addEventListener('input', () => {
 $('#btnLimparFiltros').addEventListener('click', () => {
   $('#startDate').value = '';
   $('#endDate').value = '';
+  $('#competStart').value = '';
+  $('#competEnd').value = '';
   $('#filterTipo').value = 'all';
   $('#filterDirection').value = 'all';
   $('#excludeCancelled').checked = false;
@@ -2947,8 +3367,17 @@ document.querySelectorAll('table.docs thead th[data-sort]').forEach(th => {
   });
 });
 
+// Interface clássica ou simples: só troca a folha de estilo, o resto é igual.
+const uiSelect = $('#uiSelect');
+uiSelect.value = document.documentElement.dataset.ui || 'classica';
+uiSelect.addEventListener('change', () => {
+  window.nfseAplicarUi(uiSelect.value);
+  try { localStorage.setItem('nfse.ui', uiSelect.value); } catch (_) {}
+});
+
 // ── Inicialização ─────────────────────────────────────────────────
 updateSortHeaders();
+updateNsuEfetivo();
 if (typeof DecompressionStream === 'undefined') {
   setStatus('error', 'Este navegador não suporta DecompressionStream. Use Chrome ou Edge atualizados.');
 } else {
