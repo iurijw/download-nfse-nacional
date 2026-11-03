@@ -13,16 +13,28 @@ Baixe os XMLs das suas NFS-e (emitidas e recebidas) direto da **API oficial do A
 1. Baixe o código: **[clique aqui para baixar o ZIP](https://github.com/iurijw/download-nfse-nacional/archive/refs/heads/main.zip)** (ou botão verde **Code → Download ZIP**).
 2. Extraia o ZIP em qualquer pasta.
 3. Dê **duplo clique em `NFSe Downloader.bat`**.
-4. Na página que abrir, clique em **"Selecionar certificado…"**, escolha seu certificado na janela do Chrome e feche a aba que abriu.
-5. Clique em **"Testar conexão"** e depois em **"Buscar todas as notas"**. A busca varre o feed inteiro, sempre a partir do NSU `0`.
-6. Todas as notas aparecem **listadas na própria página** (Quadro 04). Use os filtros do Quadro 02 (período de processamento, tipo, direção, canceladas, busca por texto) e/ou desmarque linhas individuais.
-7. Clique em **"Baixar ZIP dos marcados"**. O ZIP leva exatamente o que está listado e marcado, com os XMLs organizados em pastas, o **DANFSe de cada nota em PDF** e um resumo `.csv`.
+4. Na página que abrir, digite o **CNPJ do certificado** no Quadro 01 (desde 03/11/2026 o ADN só responde com ele — veja abaixo). Ele fica guardado no navegador para as próximas vezes.
+5. Clique em **"Selecionar certificado…"**, escolha seu certificado na janela do Chrome e feche a aba que abriu.
+6. Clique em **"Testar conexão"** e depois em **"Buscar todas as notas"**. A busca varre o feed inteiro, sempre a partir do NSU `0`.
+7. Todas as notas aparecem **listadas na própria página** (Quadro 04). Use os filtros do Quadro 02 (período de processamento, tipo, direção, canceladas, busca por texto) e/ou desmarque linhas individuais.
+8. Clique em **"Baixar ZIP dos marcados"**. O ZIP leva exatamente o que está listado e marcado, com os XMLs organizados em pastas, o **DANFSe de cada nota em PDF** e um resumo `.csv`.
 
 Os filtros são aplicados **na listagem**, não na consulta: mudar um filtro não refaz nenhuma chamada à API. Dá para gerar vários ZIPs diferentes (um por mês, um por tomador, só as recebidas...) a partir da mesma busca.
 
 Na listagem dá para **ordenar clicando no cabeçalho** de qualquer coluna. Notas canceladas aparecem em vermelho, com a situação `CANCELADA`. Notas com **imposto retido** aparecem com a linha em amarelo e a etiqueta `VALORES RETIDOS`. Isso vale para qualquer tributo retido informado no XML (`vRetIRRF`, `vRetCP`, `vRetCSLL`, PIS/COFINS retidos, ISSQN retido ou `vTotalRet`), **mesmo quando o valor bruto (`vBC`) é igual ao líquido (`vLiq`)**, e também para notas em que o bruto difere do líquido. Passe o mouse na etiqueta para ver cada tributo retido, bruto, líquido e diferença, ou digite `retido` (ou o tributo, como `irrf`) na busca para listar só elas. O `.csv` traz a coluna `Tributos retidos` com o detalhe de cada nota.
 
 O filtro de período usa a **data de processamento** da nota (`dhProc`), não a de emissão (`dhEmi`) — uma DPS emitida em 30/06 e processada em 01/07 entra em julho. DPS ainda não processada (sem `dhProc`) é filtrada pela emissão. Quando as duas datas caem em dias diferentes, a listagem mostra um aviso no topo, destaca as duas datas e põe a etiqueta `DATAS DIFERENTES` na linha; passe o mouse nela para ver data e hora de cada uma, ou digite `datas diferentes` na busca para listar só essas notas. O resumo `.csv` traz as colunas `Processamento` e `Datas diferentes`.
+
+## CNPJ obrigatório na consulta (mudança do ADN em 03/11/2026)
+
+Desde 03/11/2026 o ADN recusa a consulta `GET /contribuintes/DFe/{nsu}` que não traz o parâmetro `cnpjConsulta`: a resposta é `400` com `StatusProcessamento: REJEICAO`, a lista `Erros` vazia e `TipoConsulta: InscricaoCertificado`. Com o CNPJ informado, a consulta volta a ser feita pela raiz do certificado (`TipoConsulta: CnpjBase`) e funciona como antes.
+
+Por isso a página não descobre mais a empresa sozinha, pelas notas: o CNPJ é digitado no campo **CNPJ do certificado** e vai em toda consulta (`?lote=true&cnpjConsulta=…`).
+
+- Serve o CNPJ do próprio certificado ou de outro estabelecimento da mesma raiz (matriz ou filial). CNPJ de outra raiz, sem procuração, é recusado pelo ADN (`E2245`), e a página mostra o código e a mensagem.
+- O dígito verificador é conferido antes de consultar, inclusive no CNPJ alfanumérico.
+- Quem já usava a página volta com o CNPJ que tinha sido detectado antes, já preenchido.
+- Com certificado **e-CPF**, digite o CPF: a consulta segue sem `cnpjConsulta`, que é um parâmetro de CNPJ. Ainda não está confirmado como o ADN trata o e-CPF depois da mudança; se ele recusar, a mensagem aparece no topo da página.
 
 ## Interface simples
 
@@ -46,7 +58,7 @@ Dá para desmarcar **"Incluir DANFSe em PDF"** se quiser só os XMLs — o ZIP f
 | Arquivo | Função |
 |---|---|
 | `NFSe Downloader.bat` | Abre o Chrome/Edge em um **perfil separado** com a checagem de origem (CORS) desativada — sem isso, o navegador bloqueia a leitura das respostas da API do governo. Não altera nada no seu Chrome normal. |
-| `nfse-downloader.html` | A aplicação inteira, em um único arquivo. Consulta a API oficial (`GET /contribuintes/DFe/{nsu}?lote=true`) do NSU 0 até o fim do feed, descompacta os XMLs, detecta a empresa do certificado, lista tudo na tela, desenha o DANFSe em PDF e monta o ZIP do que você filtrou — tudo localmente, no seu navegador. |
+| `nfse-downloader.html` | A aplicação inteira, em um único arquivo. Consulta a API oficial (`GET /contribuintes/DFe/{nsu}?lote=true&cnpjConsulta={CNPJ}`) do NSU inicial até o fim do feed, descompacta os XMLs, lista tudo na tela, desenha o DANFSe em PDF e monta o ZIP do que você filtrou — tudo localmente, no seu navegador. |
 
 ## Segurança e código aberto
 
@@ -64,7 +76,7 @@ Dá para desmarcar **"Incluir DANFSe em PDF"** se quiser só os XMLs — o ZIP f
 ## Avisos
 
 - Use a janela aberta pelo `.bat` **somente para esta ferramenta** (a proteção de origem fica desativada nesse perfil dedicado).
-- Para trocar de certificado/empresa, feche **todas** as janelas desse perfil dedicado e abra o `.bat` de novo.
+- Para trocar de certificado/empresa, feche **todas** as janelas desse perfil dedicado, abra o `.bat` de novo e digite o CNPJ do novo certificado.
 - Como a busca sempre percorre o feed inteiro, caixas grandes levam alguns minutos (a API é consultada em lotes, com pausa de 1s entre eles). Dá para clicar em **"Parar"** a qualquer momento: o que já veio fica listado e pode ser baixado normalmente.
 - Notas canceladas são eventos separados no feed. Como o histórico completo é lido a cada busca, todo cancelamento existente é reconhecido e a nota correspondente é marcada como `CANCELADA` na listagem — e sai com a marca d'água no DANFSe.
 - O DANFSe é gerado só para NFS-e; eventos e DPS entram no ZIP apenas como XML. Se algum XML vier fora do leiaute nacional, o PDF daquela nota é pulado e o aviso aparece no Quadro 03 — o XML entra no ZIP do mesmo jeito.
