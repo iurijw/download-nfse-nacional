@@ -13,9 +13,9 @@ Baixe os XMLs das suas NFS-e (emitidas e recebidas) direto da **API oficial do A
 1. Baixe o código: **[clique aqui para baixar o ZIP](https://github.com/iurijw/download-nfse-nacional/archive/refs/heads/main.zip)** (ou botão verde **Code → Download ZIP**).
 2. Extraia o ZIP em qualquer pasta.
 3. Dê **duplo clique em `NFSe Downloader.bat`**.
-4. Na página que abrir, digite o **CNPJ do certificado** no Quadro 01 (desde 03/11/2026 o ADN só responde com ele — veja abaixo). Ele fica guardado no navegador para as próximas vezes.
-5. Clique em **"Selecionar certificado…"**, escolha seu certificado na janela do Chrome e feche a aba que abriu.
-6. Clique em **"Testar conexão"** e depois em **"Buscar todas as notas"**. A busca varre o feed inteiro, sempre a partir do NSU `0`.
+4. Assim que a página abre, o Chrome **pede o certificado**: escolha o seu (no A3, digite o PIN). A página avisa "Certificado conectado".
+5. Digite o **CNPJ a consultar** no Quadro 01: o da empresa do certificado (ou de uma filial dela) ou o de uma empresa que deu **procuração** ao certificado. Ele fica guardado no navegador para as próximas vezes.
+6. Clique em **"Buscar notas"**. A busca vai do NSU inicial até o fim do feed. Se o ADN recusar (sem procuração, certificado não aceito, ADN fora do ar), o motivo aparece num aviso no topo da página.
 7. Todas as notas aparecem **listadas na própria página** (Quadro 04). Use os filtros do Quadro 02 (período de processamento, tipo, direção, canceladas, busca por texto) e/ou desmarque linhas individuais.
 8. Clique em **"Baixar ZIP dos marcados"**. O ZIP leva exatamente o que está listado e marcado, com os XMLs organizados em pastas, o **DANFSe de cada nota em PDF** e um resumo `.csv`.
 
@@ -25,16 +25,25 @@ Na listagem dá para **ordenar clicando no cabeçalho** de qualquer coluna. Nota
 
 O filtro de período usa a **data de processamento** da nota (`dhProc`), não a de emissão (`dhEmi`) — uma DPS emitida em 30/06 e processada em 01/07 entra em julho. DPS ainda não processada (sem `dhProc`) é filtrada pela emissão. Quando as duas datas caem em dias diferentes, a listagem mostra um aviso no topo, destaca as duas datas e põe a etiqueta `DATAS DIFERENTES` na linha; passe o mouse nela para ver data e hora de cada uma, ou digite `datas diferentes` na busca para listar só essas notas. O resumo `.csv` traz as colunas `Processamento` e `Datas diferentes`.
 
-## CNPJ obrigatório na consulta (mudança do ADN em 03/11/2026)
+## CNPJ a consultar e procuração (mudança do ADN em 03/11/2026)
 
-Desde 03/11/2026 o ADN recusa a consulta `GET /contribuintes/DFe/{nsu}` que não traz o parâmetro `cnpjConsulta`: a resposta é `400` com `StatusProcessamento: REJEICAO`, a lista `Erros` vazia e `TipoConsulta: InscricaoCertificado`. Com o CNPJ informado, a consulta volta a ser feita pela raiz do certificado (`TipoConsulta: CnpjBase`) e funciona como antes.
+Desde 03/11/2026 o ADN recusa a consulta `GET /contribuintes/DFe/{nsu}` que não diz de quem são as notas: sem o parâmetro `cnpjConsulta`, a resposta é `400` com `StatusProcessamento: REJEICAO`, a lista `Erros` vazia e `TipoConsulta: InscricaoCertificado`. Por isso o CNPJ é digitado no campo **CNPJ a consultar** e vai em toda consulta (`?lote=true&cnpjConsulta=…`; um CPF vai em `cpfConsulta`).
 
-Por isso a página não descobre mais a empresa sozinha, pelas notas: o CNPJ é digitado no campo **CNPJ do certificado** e vai em toda consulta (`?lote=true&cnpjConsulta=…`).
+Quem decide se o certificado pode consultar aquele CNPJ é o ADN:
 
-- Serve o CNPJ do próprio certificado ou de outro estabelecimento da mesma raiz (matriz ou filial). CNPJ de outra raiz, sem procuração, é recusado pelo ADN (`E2245`), e a página mostra o código e a mensagem.
+| CNPJ digitado | O que o ADN faz |
+|---|---|
+| Da empresa do certificado, ou de uma filial dela (mesma raiz) | Consulta pela raiz do certificado (`TipoConsulta: CnpjBase`), como antes. |
+| De outra empresa que deu procuração ao certificado | O ADN confere a procuração e devolve as notas dela. |
+| De outra empresa, sem procuração | Recusa com `E2245`: "Não há procuração da inscrição <certificado> para a inscrição <consultada>". |
+
+Quando o ADN recusa, a página mostra um aviso com o motivo. No `E2245`, o aviso mostra as duas inscrições: a do certificado escolhido e a consultada. A procuração tem que ter sido dada **exatamente para a inscrição do certificado**: se o certificado é o e-CNPJ do escritório, para o CNPJ do escritório; se é o e-CPF do contador, para o CPF dele. Também precisa incluir o serviço da NFS-e. A página não tem como criar nem conferir a procuração: só repassa o que o ADN responde.
+
+Outros avisos: recusa sem código de erro, certificado não aceito (HTTP 401/403), ADN indisponível (HTTP 429/5xx) e falta de conexão (CORS ou certificado não apresentado).
+
 - O dígito verificador é conferido antes de consultar, inclusive no CNPJ alfanumérico.
-- Quem já usava a página volta com o CNPJ que tinha sido detectado antes, já preenchido.
-- Com certificado **e-CPF**, digite o CPF: a consulta segue sem `cnpjConsulta`, que é um parâmetro de CNPJ. Ainda não está confirmado como o ADN trata o e-CPF depois da mudança; se ele recusar, a mensagem aparece no topo da página.
+- Cada CNPJ consultado guarda o seu próprio último NSU neste navegador. Trocar o CNPJ tira da tela a listagem do anterior.
+- Quem já usava a página volta com o último CNPJ consultado já preenchido.
 
 ## Interface simples
 
@@ -76,7 +85,7 @@ Dá para desmarcar **"Incluir DANFSe em PDF"** se quiser só os XMLs — o ZIP f
 ## Avisos
 
 - Use a janela aberta pelo `.bat` **somente para esta ferramenta** (a proteção de origem fica desativada nesse perfil dedicado).
-- Para trocar de certificado/empresa, feche **todas** as janelas desse perfil dedicado, abra o `.bat` de novo e digite o CNPJ do novo certificado.
+- Para trocar de **certificado**, feche **todas** as janelas desse perfil dedicado e abra o `.bat` de novo (o Chrome memoriza o certificado escolhido até ser fechado). Para trocar só o **CNPJ consultado** (outra filial, outra empresa com procuração), basta digitar o novo CNPJ.
 - Como a busca sempre percorre o feed inteiro, caixas grandes levam alguns minutos (a API é consultada em lotes, com pausa de 1s entre eles). Dá para clicar em **"Parar"** a qualquer momento: o que já veio fica listado e pode ser baixado normalmente.
 - Notas canceladas são eventos separados no feed. Como o histórico completo é lido a cada busca, todo cancelamento existente é reconhecido e a nota correspondente é marcada como `CANCELADA` na listagem — e sai com a marca d'água no DANFSe.
 - O DANFSe é gerado só para NFS-e; eventos e DPS entram no ZIP apenas como XML. Se algum XML vier fora do leiaute nacional, o PDF daquela nota é pulado e o aviso aparece no Quadro 03 — o XML entra no ZIP do mesmo jeito.
