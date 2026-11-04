@@ -117,6 +117,8 @@
     margin-bottom: 18px;
   }
   .warn strong { color: inherit; }
+  #avisoAdn p { margin: 6px 0 0; }
+  #avisoAdn ul { margin: 6px 0 0; padding-left: 20px; }
   .warn code { background: rgba(110, 86, 0, .12); }
 
   /* ── Quadros de formulário fiscal ── */
@@ -346,6 +348,7 @@
   }
   .sheet > * { margin: 0; }
   #status { order: 1; }
+  #avisoAdn { order: 2; }
   #corsHint { order: 2; }
   #secEmpresa { order: 3; }
   .actions { order: 4; }
@@ -379,6 +382,8 @@
     border: 1px solid var(--warn-line); border-radius: 4px;
   }
   .quadro .warn { margin-bottom: 12px; }
+  #avisoAdn p { margin: 6px 0 0; }
+  #avisoAdn ul { margin: 6px 0 0; padding-left: 20px; }
   .warn code { background: rgba(90, 67, 0, .1); }
 
   /* Seções */
@@ -549,7 +554,9 @@ window.nfseAplicarUi = function (ui) {
     <p class="letterhead-sub">Retirada de documentos fiscais em lote pela API oficial, com o certificado digital selecionado no navegador. Nada sai deste computador.</p>
   </header>
 
-  <div id="status" class="status" role="status">Verificando conexão com a API...</div>
+  <div id="status" class="status" role="status">Conectando ao ADN...</div>
+
+  <div id="avisoAdn" class="warn hidden" role="alert"></div>
 
   <div id="corsHint" class="warn hidden">
     <strong>O navegador bloqueou o acesso à API (CORS)</strong> ou o certificado não foi apresentado.<br>
@@ -561,14 +568,14 @@ window.nfseAplicarUi = function (ui) {
   <section class="quadro" id="secEmpresa">
     <span class="quadro-label"><span class="ui-c">Quadro 01 · </span>Identificação do contribuinte</span>
     <div class="kv"><span class="k">Nome</span><span class="v" id="empresaNome">—</span></div>
-    <div class="kv"><label class="k" for="cnpjConsulta">CNPJ do certificado</label><span class="v"><input type="text" id="cnpjConsulta" autocomplete="off" spellcheck="false" placeholder="00.000.000/0000-00" title="O ADN exige o CNPJ na consulta desde 03/11/2026"></span></div>
+    <div class="kv"><label class="k" for="cnpjConsulta">CNPJ a consultar</label><span class="v"><input type="text" id="cnpjConsulta" autocomplete="off" spellcheck="false" placeholder="00.000.000/0000-00" title="CNPJ da empresa do certificado (ou de uma filial dela) ou de quem deu procuração a ela"></span></div>
     <div class="kv"><span class="k">Última consulta</span><span class="v" id="lastSyncAt">nunca</span></div>
     <div class="row nsu-row">
       <label>NSU inicial <input type="number" id="nsuInicial" min="0" step="1" value="0"></label>
       <label><input type="checkbox" id="optVoltarNsu" checked> Consultar também os 500 NSUs anteriores</label>
       <span class="nsu-efetivo" id="nsuEfetivo"></span>
     </div>
-    <p class="hint">Desde 03/11/2026 o ADN só responde se a consulta trouxer o <strong>CNPJ</strong> (<code>cnpjConsulta</code>). Digite o CNPJ do certificado (um estabelecimento da mesma raiz, matriz ou filial, também serve). Ele fica guardado neste navegador. Com certificado e-CPF, digite o CPF.
+    <p class="hint">Ao abrir, o navegador pede o certificado. Depois digite o <strong>CNPJ a consultar</strong>: o da empresa do certificado (ou de uma filial dela) ou o de uma empresa que deu <strong>procuração</strong> ao certificado. Quem decide se pode é o ADN: sem procuração, ele recusa e o motivo aparece no topo da página. O CNPJ fica guardado neste navegador. Para consultar um CPF, digite o CPF.
     A busca vai do <strong>NSU inicial</strong> (inclusive) até o fim do feed. O campo é preenchido sozinho com o NSU seguinte ao último já recebido desta empresa — guardado neste navegador, separado por CNPJ. Digite <strong>0</strong> para trazer todo o histórico.
     Com <em>500 NSUs anteriores</em> marcado, a busca recua 500 NSUs antes do inicial (inicial 12000 → começa no 11500; se o inicial for 500 ou menos, começa do 0), e as notas mais recentes entram de novo na listagem.
     Os documentos são listados <span class="ui-c">no Quadro 04</span><span class="ui-s">em <em>Documentos encontrados</em></span>; os filtros <span class="ui-c">do Quadro 02</span><span class="ui-s">da listagem</span> servem só para escolher o que entra no ZIP.</p>
@@ -702,9 +709,10 @@ window.nfseAplicarUi = function (ui) {
       <summary>Como usar / limitações</summary>
       <ol>
         <li>Abra sempre pelo <code>NFSe Downloader.bat</code> — abrir o .html direto faz o navegador bloquear a API por CORS.</li>
-        <li>O certificado digital (A1 instalado no Windows ou A3 no token) precisa estar disponível no computador. O Chrome mostra o seletor de certificado na primeira conexão com <code>adn.nfse.gov.br</code>.</li>
-        <li>O Chrome memoriza o certificado escolhido até ser totalmente fechado. Para trocar de empresa, feche todas as janelas desse Chrome, abra de novo pelo .bat e digite o CNPJ do novo certificado.</li>
-        <li>Desde 03/11/2026 o ADN exige o CNPJ na consulta (<code>cnpjConsulta</code>); sem ele, recusa com <code>REJEICAO</code> sem dizer o motivo. Por isso a página não descobre mais a empresa sozinha: o CNPJ é digitado no campo <em>CNPJ do certificado</em>.</li>
+        <li>O certificado digital (A1 instalado no Windows ou A3 no token) precisa estar disponível no computador. O Chrome mostra o seletor de certificado assim que a página abre (é a primeira conexão com <code>adn.nfse.gov.br</code>).</li>
+        <li>O Chrome memoriza o certificado escolhido até ser totalmente fechado. Para trocar de certificado, feche todas as janelas desse Chrome e abra de novo pelo .bat. Para trocar só o CNPJ consultado (outra filial ou outra empresa com procuração), basta digitar o novo CNPJ.</li>
+        <li>Desde 03/11/2026 o ADN exige o CNPJ na consulta (<code>cnpjConsulta</code>, ou <code>cpfConsulta</code> para CPF); sem ele, recusa com <code>REJEICAO</code> sem dizer o motivo. Por isso o CNPJ é digitado no campo <em>CNPJ a consultar</em>.</li>
+        <li>Procuração: com o certificado de uma empresa (ou de um contador), dá para consultar outra empresa que tenha dado procuração a essa inscrição. Quem confere é o ADN; sem procuração ele responde <code>E2245</code> ("Não há procuração da inscrição … para a inscrição …") e a página mostra o aviso com as duas inscrições.</li>
         <li>A busca vai do NSU inicial até o fim do feed. Com o NSU inicial em 0 ela traz o histórico inteiro — em caixas grandes isso demora alguns minutos. Você pode clicar em <em>Parar</em>: o que já veio continua listado.</li>
         <li>Esta página não envia dados para lugar nenhum: fala só com <code>adn.nfse.gov.br</code> e guarda no localStorage apenas o nome/CNPJ das empresas consultadas e o último NSU recebido de cada uma.</li>
         <li>Notas canceladas: o cancelamento é um EVENTO separado, que entra no feed depois da nota. Como a busca sempre vai até o fim do feed, toda nota listada tem o cancelamento reconhecido e aparece marcada como CANCELADA.</li>
@@ -755,35 +763,42 @@ function on429(retryAfterMs) {
 }
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-// Desde 03/11/2026 o ADN recusa GET /DFe/{nsu} sem cnpjConsulta: responde 400
-// REJEICAO com "Erros" vazio e TipoConsulta "InscricaoCertificado". Com o CNPJ
-// do certificado (ou de outro estabelecimento da mesma raiz) a consulta volta a
-// ser pela raiz do certificado (TipoConsulta "CnpjBase").
-function urlDfe(nsu, cnpj) {
-  return `${ADN_BASE}/DFe/${nsu}?lote=true` + (cnpj ? `&cnpjConsulta=${encodeURIComponent(cnpj)}` : '');
+// Desde 03/11/2026 o ADN só responde se a consulta disser de quem são as notas:
+// cnpjConsulta (ou cpfConsulta). Sem o parâmetro: 400 REJEICAO com "Erros" vazio.
+// Da mesma raiz do certificado, a consulta é pela raiz (TipoConsulta "CnpjBase").
+// De outra inscrição, o ADN confere se ela deu procuração ao certificado; sem
+// procuração: 400 REJEICAO, E2245 "Não há procuração da inscrição <certificado>
+// para a inscrição <consultada>".
+// consulta = { doc, param } (lerDocConsulta); null = sem parâmetro.
+function urlDfe(nsu, consulta) {
+  const q = consulta ? `&${consulta.param}=${encodeURIComponent(consulta.doc)}` : '';
+  return `${ADN_BASE}/DFe/${nsu}?lote=true${q}`;
 }
 
-// Texto da rejeição do ADN: os erros que ele mandou ou, sem eles, uma dica.
-function mensagemRejeicao(data, httpStatus, cnpj) {
-  const erros = (Array.isArray(data?.Erros) ? data.Erros : []).map(e => {
-    if (typeof e === 'string') return e;
-    return [e?.Codigo ?? e?.codigo, e?.Descricao ?? e?.descricao ?? e?.Mensagem ?? e?.mensagem,
-      e?.Complemento ?? e?.complemento].filter(Boolean).join(' – ');
-  }).filter(Boolean);
-  if (erros.length) return `O ADN recusou a consulta: ${erros.join(' | ')}`;
-  const tipo = data?.TipoConsulta ? `, tipo de consulta ${data.TipoConsulta}` : '';
-  return `O ADN recusou a consulta sem dizer o motivo (HTTP ${httpStatus}${tipo}). ` + (cnpj
-    ? 'Confira se o "CNPJ do certificado" é o do certificado escolhido (ou de um estabelecimento da mesma raiz).'
-    : 'Desde 03/11/2026 ele exige o CNPJ na consulta (cnpjConsulta): se o certificado for e-CNPJ, digite o CNPJ no campo "CNPJ do certificado".');
+// "Erros" da resposta do ADN → [{ codigo, descricao }].
+function errosAdn(data) {
+  const lista = Array.isArray(data?.Erros) ? data.Erros : [];
+  return lista.map(e => typeof e === 'string' ? { codigo: '', descricao: e } : {
+    codigo: String(e?.Codigo ?? e?.codigo ?? ''),
+    descricao: [e?.Descricao ?? e?.descricao, e?.Complemento ?? e?.complemento]
+      .filter(v => typeof v === 'string' && v).join(' – '),
+  }).filter(e => e.codigo || e.descricao);
 }
+const textoErros = (erros) => erros.map(e => [e.codigo, e.descricao].filter(Boolean).join(' – ')).join(' | ');
 
-async function fetchAdnBatch(nsu, cnpj) {
-  const url = urlDfe(nsu, cnpj);
+// Até a primeira resposta, a chamada pode estar esperando o seletor de
+// certificado (e o PIN do token A3): o prazo é maior.
+const CERT_TIMEOUT_MS = 120000;
+let conexaoAberta = false;
+
+async function fetchAdnBatch(nsu, consulta) {
+  const url = urlDfe(nsu, consulta);
   let lastStatus = null, lastError = null;
   for (let attempt = 0; attempt < 5; attempt++) {
     await waitBudget();
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+    const prazo = conexaoAberta ? FETCH_TIMEOUT_MS : CERT_TIMEOUT_MS;
+    const t = setTimeout(() => ctrl.abort(), prazo);
     try {
       const resp = await fetch(url, {
         credentials: 'include',
@@ -791,6 +806,7 @@ async function fetchAdnBatch(nsu, cnpj) {
         signal: ctrl.signal,
       });
       clearTimeout(t);
+      conexaoAberta = true;
       rate.lastFetchAt = Date.now();
       if (TRANSIENT.has(resp.status)) {
         lastStatus = resp.status;
@@ -800,25 +816,30 @@ async function fetchAdnBatch(nsu, cnpj) {
         continue;
       }
       // O ADN responde 404 (nada encontrado) e 400 (rejeição) com o corpo
-      // normal: o que vale é StatusProcessamento.
+      // normal: o que vale é StatusProcessamento. Com ele, a resposta veio do
+      // serviço — o certificado passou.
       let data = null;
       try { data = await resp.json(); } catch (_) {}
       const situacao = typeof data?.StatusProcessamento === 'string' ? data.StatusProcessamento.toUpperCase() : '';
+      const base = { status: resp.status, servico: !!situacao, tipoConsulta: data?.TipoConsulta || '', erros: errosAdn(data) };
       if (situacao === 'REJEICAO') {
-        return { ok: false, status: resp.status, rejeicao: true, error: mensagemRejeicao(data, resp.status, cnpj) };
+        return { ...base, ok: false, rejeicao: true,
+          error: base.erros.length ? textoErros(base.erros) : `recusada sem motivo (HTTP ${resp.status})` };
       }
-      if (resp.ok && data) { onSuccess(); return { ok: true, data }; }
-      if (resp.status === 404 && situacao) { onSuccess(); return { ok: true, data }; }
-      return { ok: false, status: resp.status, error: resp.ok ? 'resposta inesperada da API' : `HTTP ${resp.status}` };
+      if (resp.ok && data) { onSuccess(); return { ...base, ok: true, data }; }
+      if (resp.status === 404 && situacao) { onSuccess(); return { ...base, ok: true, data }; }
+      return { ...base, ok: false,
+        error: (resp.ok ? 'resposta inesperada da API' : `HTTP ${resp.status}`)
+          + (base.erros.length ? `: ${textoErros(base.erros)}` : '') };
     } catch (err) {
       clearTimeout(t);
       rate.lastFetchAt = Date.now();
-      lastError = err.name === 'AbortError' ? new Error(`timeout (${FETCH_TIMEOUT_MS / 1000}s)`) : err;
+      lastError = err.name === 'AbortError' ? new Error(`timeout (${prazo / 1000}s)`) : err;
       if (attempt < 4) await sleep(1500 * (attempt + 1));
     }
   }
-  if (lastStatus) return { ok: false, status: lastStatus, error: `HTTP ${lastStatus}` };
-  return { ok: false, error: lastError ? lastError.message : 'falha desconhecida', maybeCors: true };
+  if (lastStatus) return { ok: false, status: lastStatus, erros: [], error: `HTTP ${lastStatus}` };
+  return { ok: false, erros: [], error: lastError ? lastError.message : 'falha desconhecida', maybeCors: true };
 }
 
 // ── XML: decodificar base64+gzip e extrair metadados ─────────────
@@ -3114,13 +3135,12 @@ function updateTotals() {
   btnZip.disabled = marcados.length === 0;
 }
 
-// ── CNPJ da consulta (campo "CNPJ do certificado") ───────────────
-// { doc, cnpj }: doc é o CNPJ ou CPF digitado; cnpj é o que vai no
-// cnpjConsulta (só CNPJ; com e-CPF a consulta segue sem o parâmetro).
+// ── CNPJ a consultar ──────────────────────────────────────────────
+// { doc, param }: o CNPJ ou CPF digitado e o parâmetro em que ele vai.
 function lerDocConsulta() {
   const d = normDoc(cnpjInput.value);
-  if (cnpjValido(d)) return { doc: d, cnpj: d };
-  if (cpfValido(d)) return { doc: d, cnpj: null };
+  if (cnpjValido(d)) return { doc: d, param: 'cnpjConsulta' };
+  if (cpfValido(d)) return { doc: d, param: 'cpfConsulta' };
   return null;
 }
 function pedirCnpj({ foco = true } = {}) {
@@ -3128,8 +3148,8 @@ function pedirCnpj({ foco = true } = {}) {
   if (vazio) cnpjInput.removeAttribute('aria-invalid');
   else cnpjInput.setAttribute('aria-invalid', 'true');
   setStatus(vazio ? '' : 'error', vazio
-    ? 'Digite o CNPJ do certificado e clique em "Testar conexão". Desde 03/11/2026 o ADN só responde à consulta com ele.'
-    : 'O "CNPJ do certificado" está incompleto ou com dígito verificador errado. Confira e tente de novo.');
+    ? 'Digite o CNPJ a consultar (o da empresa do certificado ou de quem deu procuração a ela) e clique em "Buscar notas".'
+    : 'O "CNPJ a consultar" está incompleto ou com dígito verificador errado. Confira e tente de novo.');
   if (foco) cnpjInput.focus();
 }
 // Passa a usar o CNPJ/CPF informado: identificação, NSU inicial sugerido e
@@ -3152,13 +3172,130 @@ function usarDocConsulta(doc) {
   showEmpresa(doc, currentEmpresa.nome);
 }
 
-// ── Sondagem (NSU 0): confere a conexão e o nome do contribuinte ──
+// ── Avisos do ADN ─────────────────────────────────────────────────
+const avisoAdn = $('#avisoAdn');
+function mostrarAviso(titulo, html) {
+  avisoAdn.innerHTML = `<strong>${escHtml(titulo)}</strong>${html}`;
+  avisoAdn.classList.remove('hidden');
+}
+function esconderAviso() {
+  avisoAdn.classList.add('hidden');
+  avisoAdn.innerHTML = '';
+}
+const fmtDoc = (d) => escHtml(formatCnpjCpf(d));
+
+// O que deu errado, em português: { status (uma linha), titulo, html }.
+function explicarFalha(resp, consulta) {
+  const alvo = consulta ? formatCnpjCpf(consulta.doc) : '';
+  const erros = resp.erros || [];
+  const listaErros = erros.length
+    ? `<ul>${erros.map(e => `<li>${escHtml([e.codigo, e.descricao].filter(Boolean).join(' – '))}</li>`).join('')}</ul>`
+    : '';
+
+  const e2245 = erros.find(e => e.codigo === 'E2245');
+  if (e2245) {
+    // "Não há procuração da inscrição <certificado> para a inscrição <consultada>."
+    const m = /inscri\S*\s+([0-9A-Za-z.\/-]+)\s+para\s+a\s+inscri\S*\s+([0-9A-Za-z.\/-]+)/i.exec(e2245.descricao);
+    const cert = m ? normDoc(m[1]) : '';
+    const consultado = m ? normDoc(m[2]) : (consulta?.doc || '');
+    const certHtml = cert ? `<b>${fmtDoc(cert)}</b>` : 'o titular do certificado';
+    const consHtml = consultado ? `<b>${fmtDoc(consultado)}</b>` : 'a empresa consultada';
+    return {
+      status: `Sem procuração: o ADN não deixou ${cert ? formatCnpjCpf(cert) : 'o certificado'} consultar ${formatCnpjCpf(consultado) || alvo}. Veja o aviso abaixo.`,
+      titulo: 'Sem procuração para consultar este CNPJ',
+      html: `<p>O ADN respondeu: ${escHtml(e2245.descricao)} (${escHtml(e2245.codigo)})</p>`
+        + `<p>O certificado escolhido é de ${certHtml}. Para baixar as notas de ${consHtml}, ela precisa ter dado procuração `
+        + `exatamente para essa inscrição: se o certificado é um e-CNPJ, a procuração tem que ser para esse CNPJ; se é um e-CPF, `
+        + `para esse CPF. E a procuração precisa incluir o serviço da NFS-e.</p>`
+        + `<p>Confira também se o CNPJ digitado está certo. Para a própria empresa do certificado, ou uma filial dela (mesma raiz), `
+        + `não precisa de procuração.</p>`,
+    };
+  }
+  if (resp.rejeicao && erros.length) {
+    return {
+      status: `O ADN recusou a consulta: ${textoErros(erros)}`,
+      titulo: 'O ADN recusou a consulta',
+      html: listaErros + `<p>Confira o CNPJ digitado${alvo ? ` (${escHtml(alvo)})` : ''} e o certificado escolhido.</p>`,
+    };
+  }
+  if (resp.rejeicao) {
+    const tipo = resp.tipoConsulta ? `, TipoConsulta ${escHtml(resp.tipoConsulta)}` : '';
+    return {
+      status: `O ADN recusou a consulta sem dizer o motivo (HTTP ${resp.status}). Veja o aviso abaixo.`,
+      titulo: 'O ADN recusou a consulta sem dizer o motivo',
+      html: `<p>Resposta: HTTP ${escHtml(resp.status)}, REJEICAO sem código de erro${tipo}.</p>`
+        + `<p>Confira se o CNPJ digitado${alvo ? ` (${escHtml(alvo)})` : ''} está certo e se o certificado escolhido é dessa empresa `
+        + `ou tem procuração dela. Se estiver tudo certo, o ADN pode ter mudado de novo a forma de consultar.</p>`,
+    };
+  }
+  if (resp.status === 401 || resp.status === 403) {
+    return {
+      status: `O ADN não aceitou o certificado (HTTP ${resp.status}). Veja o aviso abaixo.`,
+      titulo: 'O ADN não aceitou o certificado',
+      html: listaErros + `<p>HTTP ${escHtml(resp.status)}. Confira se o certificado (e-CNPJ ou e-CPF, ICP-Brasil) está dentro da validade. `
+        + `Para escolher outro, feche <em>todas</em> as janelas deste Chrome e abra de novo pelo <code>NFSe Downloader.bat</code>.</p>`,
+    };
+  }
+  if (resp.status === 429 || resp.status >= 500) {
+    return {
+      status: `O ADN está indisponível agora (HTTP ${resp.status}). Tente de novo em alguns minutos.`,
+      titulo: 'O ADN está indisponível agora',
+      html: `<p>HTTP ${escHtml(resp.status)}, mesmo depois de algumas tentativas. Não é problema do certificado nem do CNPJ: `
+        + `tente de novo em alguns minutos.</p>`,
+    };
+  }
+  return {
+    status: `A API da NFS-e respondeu com erro (${resp.error}). Veja o aviso abaixo.`,
+    titulo: 'A API da NFS-e respondeu com erro',
+    html: listaErros + `<p>${escHtml(resp.error)}. Tente de novo em instantes; se continuar, confira o CNPJ e o certificado.</p>`,
+  };
+}
+
+// Mostra a falha: sem resposta do ADN, as instruções de CORS/certificado;
+// com resposta, o aviso com o motivo.
+function mostrarFalha(resp, consulta) {
+  if (resp.maybeCors) {
+    esconderAviso();
+    setStatus('error', 'Não foi possível acessar a API. Veja as instruções abaixo.');
+    corsHint.classList.remove('hidden');
+    return;
+  }
+  corsHint.classList.add('hidden');
+  const f = explicarFalha(resp, consulta);
+  mostrarAviso(f.titulo, f.html);
+  setStatus('error', f.status);
+}
+
+function rotuloConsulta(tipo) {
+  if (/^cnpj_?base$/i.test(tipo || '')) return ' (consulta pela raiz do certificado)';
+  if (/procura/i.test(tipo || '')) return ' (consulta por procuração)';
+  return '';
+}
+
+// ── Abertura: o navegador pede o certificado ─────────────────────
+// A primeira chamada ao ADN faz o Chrome mostrar o seletor de certificado.
+// Ela vai sem CNPJ, só para abrir a conexão: qualquer resposta do serviço
+// (sem o CNPJ ele responde REJEICAO) mostra que o certificado foi aceito.
+async function conectarCertificado() {
+  esconderAviso();
+  setStatus('', 'Conectando ao ADN... Escolha o certificado na janela do navegador.');
+  const resp = await fetchAdnBatch(0, null);
+  if (!resp.ok && !resp.servico) { mostrarFalha(resp, null); return false; }
+  corsHint.classList.add('hidden');
+  setStatus('ok', lerDocConsulta()
+    ? 'Certificado conectado. Confira o CNPJ a consultar e clique em "Buscar notas".'
+    : 'Certificado conectado. Agora digite o CNPJ a consultar (o da empresa do certificado ou de quem deu procuração a ela) e clique em "Buscar notas".');
+  cnpjInput.focus();
+  return true;
+}
+
+// ── Sondagem (NSU 0): confere a consulta e o nome do contribuinte ─
 async function probeActiveEmpresa(consulta) {
-  const resp = await fetchAdnBatch(0, consulta.cnpj);
+  const resp = await fetchAdnBatch(0, consulta);
   if (!resp.ok) return { error: resp };
   const batch = resp.data;
   if (batch.StatusProcessamento === 'NENHUM_DOCUMENTO_LOCALIZADO' || !batch.LoteDFe?.length) {
-    return { empty: true };
+    return { empty: true, tipoConsulta: resp.tipoConsulta };
   }
   const metas = [];
   for (const doc of batch.LoteDFe) {
@@ -3168,31 +3305,21 @@ async function probeActiveEmpresa(consulta) {
       if (meta) metas.push(meta);
     } catch (_) {}
   }
-  return { nome: nomeNosDocs(metas, consulta.doc), total: batch.LoteDFe.length };
+  return { nome: nomeNosDocs(metas, consulta.doc), total: batch.LoteDFe.length, tipoConsulta: resp.tipoConsulta };
 }
 
 async function checkConnection() {
   const consulta = lerDocConsulta();
   if (!consulta) { pedirCnpj(); return null; }
   usarDocConsulta(consulta.doc);
-  setStatus('', 'Verificando conexão com a API...');
+  esconderAviso();
+  setStatus('', `Consultando ${formatCnpjCpf(consulta.doc)} no ADN...`);
   const probe = await probeActiveEmpresa(consulta);
-  if (probe.error) {
-    const hint = probe.error.error || '';
-    if (probe.error.rejeicao) {
-      corsHint.classList.add('hidden');
-      setStatus('error', hint);
-    } else if (probe.error.maybeCors || /Failed to fetch|timeout/i.test(hint)) {
-      setStatus('error', 'Não foi possível acessar a API. Veja as instruções abaixo.');
-      corsHint.classList.remove('hidden');
-    } else {
-      setStatus('error', `A API da NFS-e retornou erro (${hint}). Tente de novo em instantes.`);
-    }
-    return null;
-  }
+  if (probe.error) { mostrarFalha(probe.error, consulta); return null; }
   corsHint.classList.add('hidden');
+  const rotulo = rotuloConsulta(probe.tipoConsulta);
   if (probe.empty) {
-    setStatus('ok', 'Conectado à API NFS-e Nacional — caixa de entrada vazia para este certificado.');
+    setStatus('ok', `Conectado${rotulo} — nenhum documento para ${formatCnpjCpf(consulta.doc)}.`);
     return probe;
   }
   if (probe.nome) {
@@ -3200,7 +3327,7 @@ async function checkConnection() {
     saveEmpresa(currentEmpresa.cnpj, probe.nome, { seed: true });
     showEmpresa(currentEmpresa.cnpj, probe.nome);
   }
-  setStatus('ok', `Conectado à API NFS-e Nacional — ${probe.total}+ documentos disponíveis. Clique em "Buscar notas".`);
+  setStatus('ok', `Conectado${rotulo} — ${probe.total}+ documentos disponíveis. Clique em "Buscar notas".`);
   return probe;
 }
 
@@ -3209,6 +3336,7 @@ async function buscarNotas() {
   const consulta = lerDocConsulta();
   if (!consulta) { pedirCnpj(); return; }
   usarDocConsulta(consulta.doc);
+  esconderAviso();
   cnpjInput.disabled = true;   // a busca inteira é do mesmo CNPJ
   stopRequested = false;
   btnSync.classList.add('hidden');
@@ -3236,11 +3364,14 @@ async function buscarNotas() {
     for (let i = 0; i < HARD_BATCH_LIMIT; i++) {
       if (stopRequested) { parcial = true; break; }
       setProgress('Buscando as notas...', `${rawDocs.length} documentos (NSU ${nsu})`, 3 + Math.min(i * 1.5, 47));
-      const resp = await fetchAdnBatch(nsu, consulta.cnpj);
+      const resp = await fetchAdnBatch(nsu, consulta);
       if (!resp.ok) {
         if (resp.status === 404) break;                   // fim do feed
         if (rawDocs.length === 0) {
-          throw Object.assign(new Error(resp.error || 'falha ao consultar a API'), { rejeicao: !!resp.rejeicao });
+          // Nada veio: o ADN recusou (sem procuração, certificado...) ou não respondeu.
+          mostrarFalha(resp, consulta);
+          progressCard.classList.add('hidden');
+          finalize(); return;
         }
         state.errors.push(`lote NSU ${nsu}: ${resp.error}`);
         parcial = true;
@@ -3320,7 +3451,7 @@ async function buscarNotas() {
     finalize();
   } catch (err) {
     console.error('[NFSe] erro na busca:', err);
-    setStatus('error', err.rejeicao ? err.message : `Algo deu errado: ${err.message}`);
+    setStatus('error', `Algo deu errado: ${err.message}`);
     if (/Failed to fetch/i.test(err.message)) corsHint.classList.remove('hidden');
     finalize();
   }
@@ -3409,11 +3540,11 @@ btnZip.addEventListener('click', baixarZip);
 btnCert.addEventListener('click', () => {
   // Abrir a URL do ADN numa aba dispara o seletor de certificados do Chrome.
   // Depois de escolher, feche a aba e clique em "Testar conexão".
-  window.open(urlDfe(0, lerDocConsulta()?.cnpj), '_blank');
-  setStatus('', 'Selecione o certificado na aba que abriu, feche-a e clique em "Testar conexão".');
+  window.open(urlDfe(0, lerDocConsulta()), '_blank');
+  setStatus('', 'Selecione o certificado na aba que abriu, feche-a e clique em "Testar conexão" (ou em "Buscar notas").');
 });
 
-// CNPJ do certificado: valida e formata ao sair do campo; Enter testa a conexão.
+// CNPJ a consultar: valida e formata ao sair do campo; Enter testa a consulta.
 cnpjInput.addEventListener('change', () => {
   const c = lerDocConsulta();
   if (c) usarDocConsulta(c.doc);
@@ -3498,15 +3629,14 @@ updateNsuEfetivo();
 if (typeof DecompressionStream === 'undefined') {
   setStatus('error', 'Este navegador não suporta DecompressionStream. Use Chrome ou Edge atualizados.');
 } else {
-  // Volta com o último CNPJ usado; sem ele, pede o CNPJ antes de consultar
-  // (desde 03/11/2026 o ADN não responde sem cnpjConsulta).
+  // Já deixa o último CNPJ usado no campo e abre a conexão: o navegador pede
+  // o certificado, e depois o usuário confirma ou digita o CNPJ a consultar.
   const lastCnpj = localStorage.getItem(LS_LAST_CNPJ);
   if (lastCnpj) {
     const e = getEmpresas()[lastCnpj];
     showEmpresa(lastCnpj, e?.nome);
   }
-  if (lerDocConsulta()) checkConnection();
-  else pedirCnpj();
+  conectarCertificado();
 }
 })();
 </script>
