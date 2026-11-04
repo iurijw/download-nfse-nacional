@@ -152,6 +152,9 @@
   }
   input[type=number] { width: 130px; }
   input[type=search] { width: 260px; max-width: 100%; }
+  #cnpjConsulta { width: 190px; max-width: 100%; }
+  #cnpjConsulta[aria-invalid=true] { border-color: var(--err); }
+  #secEmpresa .kv { align-items: baseline; }
   input[type=checkbox] { accent-color: var(--stamp); width: 15px; height: 15px; }
   select { accent-color: var(--stamp); }
 
@@ -410,6 +413,8 @@
   }
   input[type=number] { width: 130px; }
   input[type=search] { width: 320px; max-width: 100%; }
+  #cnpjConsulta { width: 190px; max-width: 100%; margin-left: 0; }
+  #cnpjConsulta[aria-invalid=true] { border-color: var(--err); }
   input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; margin: 0 4px 0 0; vertical-align: -3px; }
   :is(button, input, select, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   .hint { margin: 10px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--muted); }
@@ -556,14 +561,15 @@ window.nfseAplicarUi = function (ui) {
   <section class="quadro" id="secEmpresa">
     <span class="quadro-label"><span class="ui-c">Quadro 01 · </span>Identificação do contribuinte</span>
     <div class="kv"><span class="k">Nome</span><span class="v" id="empresaNome">—</span></div>
-    <div class="kv"><span class="k">CNPJ/CPF</span><span class="v" id="empresaCnpj">—</span></div>
+    <div class="kv"><label class="k" for="cnpjConsulta">CNPJ do certificado</label><span class="v"><input type="text" id="cnpjConsulta" autocomplete="off" spellcheck="false" placeholder="00.000.000/0000-00" title="O ADN exige o CNPJ na consulta desde 03/11/2026"></span></div>
     <div class="kv"><span class="k">Última consulta</span><span class="v" id="lastSyncAt">nunca</span></div>
     <div class="row nsu-row">
       <label>NSU inicial <input type="number" id="nsuInicial" min="0" step="1" value="0"></label>
       <label><input type="checkbox" id="optVoltarNsu" checked> Consultar também os 500 NSUs anteriores</label>
       <span class="nsu-efetivo" id="nsuEfetivo"></span>
     </div>
-    <p class="hint">A busca vai do <strong>NSU inicial</strong> (inclusive) até o fim do feed. O campo é preenchido sozinho com o NSU seguinte ao último já recebido desta empresa — guardado neste navegador, separado por CNPJ. Digite <strong>0</strong> para trazer todo o histórico.
+    <p class="hint">Desde 03/11/2026 o ADN só responde se a consulta trouxer o <strong>CNPJ</strong> (<code>cnpjConsulta</code>). Digite o CNPJ do certificado (um estabelecimento da mesma raiz, matriz ou filial, também serve). Ele fica guardado neste navegador. Com certificado e-CPF, digite o CPF.
+    A busca vai do <strong>NSU inicial</strong> (inclusive) até o fim do feed. O campo é preenchido sozinho com o NSU seguinte ao último já recebido desta empresa — guardado neste navegador, separado por CNPJ. Digite <strong>0</strong> para trazer todo o histórico.
     Com <em>500 NSUs anteriores</em> marcado, a busca recua 500 NSUs antes do inicial (inicial 12000 → começa no 11500; se o inicial for 500 ou menos, começa do 0), e as notas mais recentes entram de novo na listagem.
     Os documentos são listados <span class="ui-c">no Quadro 04</span><span class="ui-s">em <em>Documentos encontrados</em></span>; os filtros <span class="ui-c">do Quadro 02</span><span class="ui-s">da listagem</span> servem só para escolher o que entra no ZIP.</p>
   </section>
@@ -697,9 +703,10 @@ window.nfseAplicarUi = function (ui) {
       <ol>
         <li>Abra sempre pelo <code>NFSe Downloader.bat</code> — abrir o .html direto faz o navegador bloquear a API por CORS.</li>
         <li>O certificado digital (A1 instalado no Windows ou A3 no token) precisa estar disponível no computador. O Chrome mostra o seletor de certificado na primeira conexão com <code>adn.nfse.gov.br</code>.</li>
-        <li>O Chrome memoriza o certificado escolhido até ser totalmente fechado. Para trocar de empresa, feche todas as janelas desse Chrome e abra de novo pelo .bat.</li>
+        <li>O Chrome memoriza o certificado escolhido até ser totalmente fechado. Para trocar de empresa, feche todas as janelas desse Chrome, abra de novo pelo .bat e digite o CNPJ do novo certificado.</li>
+        <li>Desde 03/11/2026 o ADN exige o CNPJ na consulta (<code>cnpjConsulta</code>); sem ele, recusa com <code>REJEICAO</code> sem dizer o motivo. Por isso a página não descobre mais a empresa sozinha: o CNPJ é digitado no campo <em>CNPJ do certificado</em>.</li>
         <li>A busca vai do NSU inicial até o fim do feed. Com o NSU inicial em 0 ela traz o histórico inteiro — em caixas grandes isso demora alguns minutos. Você pode clicar em <em>Parar</em>: o que já veio continua listado.</li>
-        <li>Esta página não envia dados para lugar nenhum: fala só com <code>adn.nfse.gov.br</code> e guarda no localStorage apenas o nome/CNPJ das empresas detectadas e o último NSU recebido de cada uma.</li>
+        <li>Esta página não envia dados para lugar nenhum: fala só com <code>adn.nfse.gov.br</code> e guarda no localStorage apenas o nome/CNPJ das empresas consultadas e o último NSU recebido de cada uma.</li>
         <li>Notas canceladas: o cancelamento é um EVENTO separado, que entra no feed depois da nota. Como a busca sempre vai até o fim do feed, toda nota listada tem o cancelamento reconhecido e aparece marcada como CANCELADA.</li>
       </ol>
     </details>
@@ -748,8 +755,30 @@ function on429(retryAfterMs) {
 }
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-async function fetchAdnBatch(nsu) {
-  const url = `${ADN_BASE}/DFe/${nsu}?lote=true`;
+// Desde 03/11/2026 o ADN recusa GET /DFe/{nsu} sem cnpjConsulta: responde 400
+// REJEICAO com "Erros" vazio e TipoConsulta "InscricaoCertificado". Com o CNPJ
+// do certificado (ou de outro estabelecimento da mesma raiz) a consulta volta a
+// ser pela raiz do certificado (TipoConsulta "CnpjBase").
+function urlDfe(nsu, cnpj) {
+  return `${ADN_BASE}/DFe/${nsu}?lote=true` + (cnpj ? `&cnpjConsulta=${encodeURIComponent(cnpj)}` : '');
+}
+
+// Texto da rejeição do ADN: os erros que ele mandou ou, sem eles, uma dica.
+function mensagemRejeicao(data, httpStatus, cnpj) {
+  const erros = (Array.isArray(data?.Erros) ? data.Erros : []).map(e => {
+    if (typeof e === 'string') return e;
+    return [e?.Codigo ?? e?.codigo, e?.Descricao ?? e?.descricao ?? e?.Mensagem ?? e?.mensagem,
+      e?.Complemento ?? e?.complemento].filter(Boolean).join(' – ');
+  }).filter(Boolean);
+  if (erros.length) return `O ADN recusou a consulta: ${erros.join(' | ')}`;
+  const tipo = data?.TipoConsulta ? `, tipo de consulta ${data.TipoConsulta}` : '';
+  return `O ADN recusou a consulta sem dizer o motivo (HTTP ${httpStatus}${tipo}). ` + (cnpj
+    ? 'Confira se o "CNPJ do certificado" é o do certificado escolhido (ou de um estabelecimento da mesma raiz).'
+    : 'Desde 03/11/2026 ele exige o CNPJ na consulta (cnpjConsulta): se o certificado for e-CNPJ, digite o CNPJ no campo "CNPJ do certificado".');
+}
+
+async function fetchAdnBatch(nsu, cnpj) {
+  const url = urlDfe(nsu, cnpj);
   let lastStatus = null, lastError = null;
   for (let attempt = 0; attempt < 5; attempt++) {
     await waitBudget();
@@ -770,10 +799,17 @@ async function fetchAdnBatch(nsu) {
         await sleep(ra || 2000 * Math.pow(2, attempt));
         continue;
       }
-      if (!resp.ok) return { ok: false, status: resp.status, error: `HTTP ${resp.status}` };
-      const data = await resp.json();
-      onSuccess();
-      return { ok: true, data };
+      // O ADN responde 404 (nada encontrado) e 400 (rejeição) com o corpo
+      // normal: o que vale é StatusProcessamento.
+      let data = null;
+      try { data = await resp.json(); } catch (_) {}
+      const situacao = typeof data?.StatusProcessamento === 'string' ? data.StatusProcessamento.toUpperCase() : '';
+      if (situacao === 'REJEICAO') {
+        return { ok: false, status: resp.status, rejeicao: true, error: mensagemRejeicao(data, resp.status, cnpj) };
+      }
+      if (resp.ok && data) { onSuccess(); return { ok: true, data }; }
+      if (resp.status === 404 && situacao) { onSuccess(); return { ok: true, data }; }
+      return { ok: false, status: resp.status, error: resp.ok ? 'resposta inesperada da API' : `HTTP ${resp.status}` };
     } catch (err) {
       clearTimeout(t);
       rate.lastFetchAt = Date.now();
@@ -906,37 +942,59 @@ function extractXmlMetadata(xmlString) {
 
 const digitsOnly = (s) => (s || '').replace(/\D/g, '');
 
+// CNPJ/CPF só com letras maiúsculas e dígitos (o CNPJ alfanumérico tem letras).
+const normDoc = (s) => String(s || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
+
 function formatCnpjCpf(d) {
-  const v = digitsOnly(d);
-  if (v.length === 14) return v.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
-  if (v.length === 11) return v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  const v = normDoc(d);
+  if (/^[0-9A-Z]{12}\d{2}$/.test(v)) return v.replace(/(.{2})(.{3})(.{3})(.{4})(.{2})/, '$1.$2.$3/$4-$5');
+  if (/^\d{11}$/.test(v)) return v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
   return d || '';
 }
 
-// Dono do certificado = CNPJ/CPF que mais aparece nos documentos
-// (prestador nas emitidas, tomador nas recebidas).
-function detectOwner(metas) {
-  const tally = new Map();
-  const bump = (doc, nome, role) => {
-    const d = digitsOnly(doc);
-    if (d.length !== 11 && d.length !== 14) return;
-    let e = tally.get(d);
-    if (!e) { e = { cnpj: d, docs: 0, asPrest: 0, asToma: 0, nome: '' }; tally.set(d, e); }
-    e.docs++;
-    if (role === 'prest') e.asPrest++; else e.asToma++;
-    if (!e.nome && nome && nome !== 'Tomador nao identificado') e.nome = nome;
+// Dígitos verificadores. No CNPJ alfanumérico cada caractere vale o código
+// ASCII menos 48 (os dígitos continuam valendo eles mesmos).
+function cnpjValido(c) {
+  if (!/^[0-9A-Z]{12}\d{2}$/.test(c) || /^(\d)\1{13}$/.test(c)) return false;
+  const dv = (base) => {
+    let soma = 0, peso = 2;
+    for (let i = base.length - 1; i >= 0; i--) {
+      soma += (base.charCodeAt(i) - 48) * peso;
+      peso = peso === 9 ? 2 : peso + 1;
+    }
+    const r = soma % 11;
+    return r < 2 ? 0 : 11 - r;
   };
+  const d1 = dv(c.slice(0, 12));
+  return c.slice(12) === `${d1}${dv(c.slice(0, 12) + d1)}`;
+}
+function cpfValido(c) {
+  if (!/^\d{11}$/.test(c) || /^(\d)\1{10}$/.test(c)) return false;
+  const dv = (base) => {
+    let soma = 0;
+    for (let i = 0; i < base.length; i++) soma += Number(base[i]) * (base.length + 1 - i);
+    const r = (soma * 10) % 11;
+    return r === 10 ? 0 : r;
+  };
+  const d1 = dv(c.slice(0, 9));
+  return c.slice(9) === `${d1}${dv(c.slice(0, 9) + d1)}`;
+}
+
+// Nome do contribuinte como aparece nos documentos: o do próprio CNPJ/CPF
+// ou, na falta, o de outro estabelecimento da mesma raiz (8 primeiros).
+function nomeNosDocs(metas, doc) {
+  const raiz = doc.length === 14 ? doc.slice(0, 8) : null;
+  let daRaiz = '';
   for (const m of metas) {
     if (!m) continue;
-    bump(m.prestadorCnpj, m.prestadorNome, 'prest');
-    bump(m.tomadorCpfCnpj, m.tomadorNome, 'toma');
+    for (const [d, nome] of [[m.prestadorCnpj, m.prestadorNome], [m.tomadorCpfCnpj, m.tomadorNome]]) {
+      if (!nome || nome === 'Tomador nao identificado') continue;
+      const n = normDoc(d);
+      if (n === doc) return nome;
+      if (!daRaiz && raiz && n.length === 14 && n.slice(0, 8) === raiz) daRaiz = nome;
+    }
   }
-  const ranked = [...tally.values()].sort((a, b) =>
-    b.docs - a.docs ||
-    ((b.asPrest > 0 && b.asToma > 0) ? 1 : 0) - ((a.asPrest > 0 && a.asToma > 0) ? 1 : 0) ||
-    b.asToma - a.asToma
-  );
-  return ranked[0] || null;
+  return daRaiz;
 }
 
 // ── Canceladas: evento com chNFSe apontando para a chave da nota ──
@@ -980,8 +1038,8 @@ function matchesDirection(doc, direction, ownerCnpj) {
   if (!direction || direction === 'all') return true;
   if (!ownerCnpj) return true;
   if (doc.tipoDoc !== 'NFSE') return true;
-  const prest = digitsOnly(doc.meta?.prestadorCnpj);
-  const toma = digitsOnly(doc.meta?.tomadorCpfCnpj);
+  const prest = normDoc(doc.meta?.prestadorCnpj);
+  const toma = normDoc(doc.meta?.tomadorCpfCnpj);
   if (direction === 'emitidas') return prest === ownerCnpj;
   if (direction === 'recebidas') return toma === ownerCnpj;
   return true;
@@ -1003,7 +1061,7 @@ function matchesBusca(doc, termo) {
 }
 
 function applyFilters(docs, filters, ownerCnpj) {
-  const owner = digitsOnly(ownerCnpj);
+  const owner = normDoc(ownerCnpj);
   return docs.filter(d => {
     if (filters.excludeCancelled && (d.cancelada || d.eventoCancelamento)) return false;
     if (filters.tipo !== 'all' && d.tipoDoc !== filters.tipo) return false;
@@ -2821,7 +2879,7 @@ function saveEmpresa(cnpj, nome, { seed = false, lastNSU = 0 } = {}) {
 
 // ── UI ────────────────────────────────────────────────────────────
 const statusEl = $('#status'), corsHint = $('#corsHint');
-const empresaNomeEl = $('#empresaNome'), empresaCnpjEl = $('#empresaCnpj'), lastSyncEl = $('#lastSyncAt');
+const empresaNomeEl = $('#empresaNome'), cnpjInput = $('#cnpjConsulta'), lastSyncEl = $('#lastSyncAt');
 const btnSync = $('#btnSync'), btnStop = $('#btnStop'), btnCheck = $('#btnCheck'), btnCert = $('#btnCert');
 const btnZip = $('#btnZip'), btnMostrarMais = $('#btnMostrarMais');
 const progressCard = $('#progressCard'), bar = $('#bar');
@@ -2831,7 +2889,7 @@ const listInfo = $('#listInfo'), chkAll = $('#chkAll'), errorBox = $('#errorBox'
 const avisoDatas = $('#avisoDatas');
 const nsuInicialInput = $('#nsuInicial'), optVoltarNsu = $('#optVoltarNsu'), nsuEfetivoEl = $('#nsuEfetivo');
 
-let currentEmpresa = null;   // { cnpj, nome } do certificado ativo
+let currentEmpresa = null;   // { cnpj, nome } do CNPJ/CPF informado (o da consulta)
 let stopRequested = false;
 let nsuDigitado = false;     // o usuário mexeu no NSU inicial: não sobrescrever
 let allDocs = [];            // tudo que veio da API, decodificado
@@ -2858,7 +2916,7 @@ function setProgress(label, count, pct) {
 }
 function showEmpresa(cnpj, nome) {
   empresaNomeEl.textContent = nome || '—';
-  empresaCnpjEl.textContent = cnpj ? formatCnpjCpf(cnpj) : '—';
+  if (cnpj) cnpjInput.value = formatCnpjCpf(cnpj);
   const e = getEmpresas()[cnpj];
   lastSyncEl.textContent = e?.lastSyncAt ? new Date(e.lastSyncAt).toLocaleString('pt-BR') : 'nunca';
   // NSU inicial sugerido: o seguinte ao último já recebido desta empresa.
@@ -3056,9 +3114,47 @@ function updateTotals() {
   btnZip.disabled = marcados.length === 0;
 }
 
-// ── Sondagem (NSU 0): identifica a empresa do certificado ────────
-async function probeActiveEmpresa() {
-  const resp = await fetchAdnBatch(0);
+// ── CNPJ da consulta (campo "CNPJ do certificado") ───────────────
+// { doc, cnpj }: doc é o CNPJ ou CPF digitado; cnpj é o que vai no
+// cnpjConsulta (só CNPJ; com e-CPF a consulta segue sem o parâmetro).
+function lerDocConsulta() {
+  const d = normDoc(cnpjInput.value);
+  if (cnpjValido(d)) return { doc: d, cnpj: d };
+  if (cpfValido(d)) return { doc: d, cnpj: null };
+  return null;
+}
+function pedirCnpj({ foco = true } = {}) {
+  const vazio = !normDoc(cnpjInput.value);
+  if (vazio) cnpjInput.removeAttribute('aria-invalid');
+  else cnpjInput.setAttribute('aria-invalid', 'true');
+  setStatus(vazio ? '' : 'error', vazio
+    ? 'Digite o CNPJ do certificado e clique em "Testar conexão". Desde 03/11/2026 o ADN só responde à consulta com ele.'
+    : 'O "CNPJ do certificado" está incompleto ou com dígito verificador errado. Confira e tente de novo.');
+  if (foco) cnpjInput.focus();
+}
+// Passa a usar o CNPJ/CPF informado: identificação, NSU inicial sugerido e
+// localStorage. Trocar de CNPJ tira da tela a listagem do anterior.
+function usarDocConsulta(doc) {
+  cnpjInput.removeAttribute('aria-invalid');
+  if (currentEmpresa?.cnpj !== doc) {
+    const trocou = !!currentEmpresa;
+    currentEmpresa = { cnpj: doc, nome: getEmpresas()[doc]?.nome || '' };
+    if (trocou && allDocs.length) {
+      allDocs = [];
+      filteredDocs = [];
+      selected.clear();
+      listCard.classList.add('hidden');
+      progressCard.classList.add('hidden');
+      setStatus('', 'CNPJ alterado. Clique em "Buscar notas" para listar as notas dele.');
+    }
+  }
+  saveEmpresa(doc, currentEmpresa.nome, { seed: true });
+  showEmpresa(doc, currentEmpresa.nome);
+}
+
+// ── Sondagem (NSU 0): confere a conexão e o nome do contribuinte ──
+async function probeActiveEmpresa(consulta) {
+  const resp = await fetchAdnBatch(0, consulta.cnpj);
   if (!resp.ok) return { error: resp };
   const batch = resp.data;
   if (batch.StatusProcessamento === 'NENHUM_DOCUMENTO_LOCALIZADO' || !batch.LoteDFe?.length) {
@@ -3072,15 +3168,21 @@ async function probeActiveEmpresa() {
       if (meta) metas.push(meta);
     } catch (_) {}
   }
-  return { owner: detectOwner(metas), total: batch.LoteDFe.length };
+  return { nome: nomeNosDocs(metas, consulta.doc), total: batch.LoteDFe.length };
 }
 
 async function checkConnection() {
+  const consulta = lerDocConsulta();
+  if (!consulta) { pedirCnpj(); return null; }
+  usarDocConsulta(consulta.doc);
   setStatus('', 'Verificando conexão com a API...');
-  const probe = await probeActiveEmpresa();
+  const probe = await probeActiveEmpresa(consulta);
   if (probe.error) {
     const hint = probe.error.error || '';
-    if (probe.error.maybeCors || /Failed to fetch|timeout/i.test(hint)) {
+    if (probe.error.rejeicao) {
+      corsHint.classList.add('hidden');
+      setStatus('error', hint);
+    } else if (probe.error.maybeCors || /Failed to fetch|timeout/i.test(hint)) {
       setStatus('error', 'Não foi possível acessar a API. Veja as instruções abaixo.');
       corsHint.classList.remove('hidden');
     } else {
@@ -3093,10 +3195,10 @@ async function checkConnection() {
     setStatus('ok', 'Conectado à API NFS-e Nacional — caixa de entrada vazia para este certificado.');
     return probe;
   }
-  if (probe.owner) {
-    currentEmpresa = { cnpj: probe.owner.cnpj, nome: probe.owner.nome };
-    saveEmpresa(probe.owner.cnpj, probe.owner.nome, { seed: true });
-    showEmpresa(probe.owner.cnpj, probe.owner.nome);
+  if (probe.nome) {
+    currentEmpresa.nome = probe.nome;
+    saveEmpresa(currentEmpresa.cnpj, probe.nome, { seed: true });
+    showEmpresa(currentEmpresa.cnpj, probe.nome);
   }
   setStatus('ok', `Conectado à API NFS-e Nacional — ${probe.total}+ documentos disponíveis. Clique em "Buscar notas".`);
   return probe;
@@ -3104,6 +3206,10 @@ async function checkConnection() {
 
 // ── Busca: do NSU inicial (ou 500 antes) até o fim do feed ────────
 async function buscarNotas() {
+  const consulta = lerDocConsulta();
+  if (!consulta) { pedirCnpj(); return; }
+  usarDocConsulta(consulta.doc);
+  cnpjInput.disabled = true;   // a busca inteira é do mesmo CNPJ
   stopRequested = false;
   btnSync.classList.add('hidden');
   btnStop.classList.remove('hidden');
@@ -3130,10 +3236,12 @@ async function buscarNotas() {
     for (let i = 0; i < HARD_BATCH_LIMIT; i++) {
       if (stopRequested) { parcial = true; break; }
       setProgress('Buscando as notas...', `${rawDocs.length} documentos (NSU ${nsu})`, 3 + Math.min(i * 1.5, 47));
-      const resp = await fetchAdnBatch(nsu);
+      const resp = await fetchAdnBatch(nsu, consulta.cnpj);
       if (!resp.ok) {
         if (resp.status === 404) break;                   // fim do feed
-        if (rawDocs.length === 0) throw new Error(resp.error || 'falha ao consultar a API');
+        if (rawDocs.length === 0) {
+          throw Object.assign(new Error(resp.error || 'falha ao consultar a API'), { rejeicao: !!resp.rejeicao });
+        }
         state.errors.push(`lote NSU ${nsu}: ${resp.error}`);
         parcial = true;
         break;
@@ -3191,11 +3299,9 @@ async function buscarNotas() {
     allDocs = decoded;
     for (const d of allDocs) selected.add(d.nsu);
 
-    // Com o histórico inteiro, a contagem dos documentos é a melhor pista da
-    // empresa; numa busca parcial (poucos documentos) vale a sonda do NSU 0.
-    const owner = (inicio === 0 || !currentEmpresa)
-      ? detectOwner(allDocs.map(d => d.meta).filter(Boolean)) : null;
-    if (owner) currentEmpresa = { cnpj: owner.cnpj, nome: owner.nome };
+    // Nome do contribuinte: o do CNPJ/CPF informado, como vem nos documentos.
+    const nome = nomeNosDocs(allDocs.map(d => d.meta), consulta.doc);
+    if (nome) currentEmpresa.nome = nome;
     registrarConsulta();
 
     listCard.classList.remove('hidden');
@@ -3214,12 +3320,13 @@ async function buscarNotas() {
     finalize();
   } catch (err) {
     console.error('[NFSe] erro na busca:', err);
-    setStatus('error', `Algo deu errado: ${err.message}`);
+    setStatus('error', err.rejeicao ? err.message : `Algo deu errado: ${err.message}`);
     if (/Failed to fetch/i.test(err.message)) corsHint.classList.remove('hidden');
     finalize();
   }
 
   function finalize() {
+    cnpjInput.disabled = false;
     btnSync.classList.remove('hidden');
     btnStop.classList.add('hidden');
   }
@@ -3302,8 +3409,18 @@ btnZip.addEventListener('click', baixarZip);
 btnCert.addEventListener('click', () => {
   // Abrir a URL do ADN numa aba dispara o seletor de certificados do Chrome.
   // Depois de escolher, feche a aba e clique em "Testar conexão".
-  window.open(`${ADN_BASE}/DFe/0?lote=true`, '_blank');
+  window.open(urlDfe(0, lerDocConsulta()?.cnpj), '_blank');
   setStatus('', 'Selecione o certificado na aba que abriu, feche-a e clique em "Testar conexão".');
+});
+
+// CNPJ do certificado: valida e formata ao sair do campo; Enter testa a conexão.
+cnpjInput.addEventListener('change', () => {
+  const c = lerDocConsulta();
+  if (c) usarDocConsulta(c.doc);
+  else pedirCnpj({ foco: false });
+});
+cnpjInput.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Enter') { ev.preventDefault(); checkConnection(); }
 });
 
 // NSU inicial: o que for digitado vale para a próxima busca.
@@ -3381,13 +3498,15 @@ updateNsuEfetivo();
 if (typeof DecompressionStream === 'undefined') {
   setStatus('error', 'Este navegador não suporta DecompressionStream. Use Chrome ou Edge atualizados.');
 } else {
-  // Mostra a última empresa detectada antes mesmo de conectar.
+  // Volta com o último CNPJ usado; sem ele, pede o CNPJ antes de consultar
+  // (desde 03/11/2026 o ADN não responde sem cnpjConsulta).
   const lastCnpj = localStorage.getItem(LS_LAST_CNPJ);
   if (lastCnpj) {
     const e = getEmpresas()[lastCnpj];
-    if (e) showEmpresa(e.cnpj, e.nome);
+    showEmpresa(lastCnpj, e?.nome);
   }
-  checkConnection();
+  if (lerDocConsulta()) checkConnection();
+  else pedirCnpj();
 }
 })();
 </script>
